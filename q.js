@@ -56,6 +56,7 @@ var st0=new Date();st0.setMinutes(0,0,0);st0.setHours(st0.getHours()+1);
 var S={sd:iso(st0),st:hm(st0),ed:'',et:'',dest:ld('qbd',''),car:'0',edit:false};
 function setDur(h){var e=new Date(mk(S.sd,S.st).getTime()+h*3600000);S.ed=iso(e);S.et=hm(e);}
 function dur(){return (mk(S.ed,S.et)-mk(S.sd,S.st))/3600000;}
+function satEnd(){var s=mk(S.sd,S.st);var t=new Date(s.getFullYear(),s.getMonth(),s.getDate()+(6-s.getDay()),23,0);if(t<=s)t.setDate(t.getDate()+7);return t;}
 setDur(2);
 var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;background:rgb(242,244,248);color:rgb(28,32,38);overflow-y:auto;-webkit-overflow-scrolling:touch;font:16px -apple-system,system-ui,sans-serif;text-align:right;direction:rtl;padding:0 0 120px}'+
 '.qbx *{box-sizing:border-box!important;font-family:inherit;float:none!important;letter-spacing:normal}'+
@@ -109,7 +110,10 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .mdl{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10;background:rgba(15,20,30,.45);display:flex;align-items:center;justify-content:center;padding:20px}'+
 '.qbx .mdl .c{flex:1 1 0;max-width:420px;margin:0;max-height:85vh;overflow-y:auto}'+
 '.qbx .users{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px 0}'+
-'.qbx .who{font-size:12px;color:rgb(110,118,130);padding:6px 16px 0;text-align:right}';
+'.qbx .who{font-size:12px;color:rgb(110,118,130);padding:6px 16px 0;text-align:right}'+
+'.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
+'.qbx .hs::-webkit-scrollbar{display:none}'+
+'.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 function el(t,c,x){var e=d.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
 function btn(x,c,f){var b=el('button',c,x);b.type='button';b.onclick=f;return b;}
@@ -187,7 +191,12 @@ r.appendChild(fld('משעה ↕',stS));
 r.appendChild(fld('עד שעה ↕',etS));
 c.appendChild(r);
 c.appendChild(el('div','sub','משך בשעות'));
-c.appendChild(seg([['1',1],['2',2],['3',3],['4',4],['6',6],['8',8]],function(h){return dur()==h;},function(h){setDur(h);draw();}));
+var hs=el('div','hs');
+[1,2,3,4,5,6,7,8,9,10,11,12,24,48,72].forEach(function(h){hs.appendChild(btn(String(h),dur()==h?'on':'',function(){setDur(h);draw();}));});
+var se=satEnd();
+hs.appendChild(btn('עד מוצ״ש 23:00',mk(S.ed,S.et).getTime()==se.getTime()?'on':'',function(){S.ed=iso(se);S.et='23:00';draw();}));
+c.appendChild(hs);
+var onB=hs.querySelector('button.on');if(onB)setTimeout(function(){onB.scrollIntoView({block:'nearest',inline:'center'});},0);
 if(dur()<=0)c.appendChild(el('div','warn','שעת ההחזרה חייבת להיות אחרי שעת הקבלה'));
 w.appendChild(c);
 c=el('div','c');
