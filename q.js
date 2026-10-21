@@ -35,7 +35,8 @@ fetch('/logout.php',{credentials:'same-origin'}).catch(function(){}).then(functi
 function switchUser(i){if(i==PR.cur&&form)return;PR.cur=i;sv('qbu',PR);relogin();}
 var form=null,DEST=[],CARS=[],GRPS=[];
 function q(n){return form.querySelector('[name="'+n+'"]');}
-function opts(n){var s=q(n);if(!s)return [];return Array.prototype.map.call(s.options,function(o){return {v:o.value,t:clean(o.text)};}).filter(function(o){return o.v!=='-1'&&o.v!=='';});}
+function shownOpt(o){if(o.disabled||o.hidden)return false;if(o.style&&o.style.display=='none')return false;var g=o.parentNode;if(g&&g.tagName=='OPTGROUP'&&(g.disabled||g.hidden||(g.style&&g.style.display=='none')))return false;return true;}
+function opts(n){var s=q(n);if(!s)return [];return Array.prototype.filter.call(s.options,shownOpt).map(function(o){return {v:o.value,t:clean(o.text)};}).filter(function(o){return o.v!=='-1'&&o.v!=='';});}
 function init(f){
 form=f;DEST=opts('dest');CARS=opts('req_car_id');GRPS=[];
 Array.prototype.forEach.call(form.querySelectorAll('input[type="radio"][name^="grp_val_"]'),function(r){var id=r.name.slice(8);if(GRPS.some(function(g){return g.id==id;}))return;var tr=r.closest('tr');var nm=tr?tr.querySelector('.grp-name'):null;GRPS.push({id:id,t:clean(nm?nm.textContent:'סוג '+id)});});
@@ -151,6 +152,7 @@ if(/סטיישן/.test(t))return '5 סטיישן';
 if(/עגלה/.test(t))return 'רכב + עגלה (פרט בהערות)';
 if(/מטען/.test(t))return 'רכב מטען';
 if(/סטריה/.test(t))return '9 (סטריה)';
+if(/מניבוס|מיניבוס/.test(t))return 'מיניבוס';
 var m=t.match(/(\d+)\s*מקומות/);
 return m?m[1]:t;
 }
