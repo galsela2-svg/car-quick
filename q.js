@@ -164,7 +164,7 @@ function say(t){return ask('',t,null,'סגור',null);}
 function back(){if(form)draw();else box.remove();}
 function shell(){
 box.innerHTML='';box.appendChild(el('style',null,css));
-var h=el('div','hdr');var ttl=el('b',null,'🚗 הזמנת רכב 🎨');ttl.onclick=pickTheme;ttl.style.cursor='pointer';h.appendChild(ttl);
+var h=el('div','hdr');var ttl=el('b',null,'הזמנת רכב');ttl.onclick=pickTheme;ttl.style.cursor='pointer';h.appendChild(ttl);
 var hb=el('div','hb');hb.appendChild(btn('📋 ההזמנות שלי',null,ordersView));hb.appendChild(btn('✕',null,function(){box.remove();}));h.appendChild(hb);
 box.appendChild(h);
 var us=el('div','users');
@@ -247,7 +247,7 @@ r.appendChild(fld('',sel([{v:'',t:'בחר יעד…'}].concat(DEST),S.dest,funct
 r.appendChild(btn(isF?'★':'☆','star',function(){if(!curT)return;if(isF){F=F.filter(function(x){return x!=curT;});}else{F.push(curT);}sv('qbf',F);draw();}));
 c.appendChild(r);
 w.appendChild(c);
-if(GRPS.length||CARS.length){
+if(GRPS.length){
 c=el('div','c');
 c.appendChild(el('div','h','🚙 איזה רכב'));
 if(GRPS.length){
@@ -256,19 +256,20 @@ GRPS.forEach(function(g){var v=P[g.id]==null?-1:Number(P[g.id]);ch.appendChild(b
 c.appendChild(ch);
 c.appendChild(el('div','lg','ירוק = רוצה · אדום = לא רוצה · אפור = לא משנה'));
 }
-if(CARS.length){r=el('div','r');r.style.margin='12px 0 0';r.appendChild(fld('רכב מסוים',sel(CARS,S.car,function(v){S.car=v;draw();})));c.appendChild(r);}
 w.appendChild(c);
 }
 var NT=[['cm','comment','הערה לעצמי'],['cs','comment_to_sadran','הערה לסדרן'],['cp','comment_to_public','הערה ציבורית']].filter(function(a){return !!q(a[1]);});
-if(NT.length){
+if(NT.length||CARS.length){
 c=el('div','c');
-var nFilled=NT.filter(function(a){return S[a[0]];}).length;
+var nFilled=NT.filter(function(a){return S[a[0]];}).length+(S.car&&S.car!='0'?1:0);
 var nh=el('div','hrow tog');nh.style.margin='0';
-nh.appendChild(el('div','h','📝 הערות'+(nFilled?' ('+nFilled+')':'')));
+nh.appendChild(el('div','h','אפשרויות נוספות'+(nFilled?' ('+nFilled+')':'')));
 nh.appendChild(el('span','chev',S.notes?'▴':'▾'));
 nh.onclick=function(){S.notes=!S.notes;draw();};
 c.appendChild(nh);
-if(S.notes){NT.forEach(function(a){
+if(S.notes){
+if(CARS.length){var rc0=el('div','r');rc0.style.margin='12px 0 0';rc0.appendChild(fld('רכב מסוים',sel(CARS,S.car,function(v){S.car=v;draw();})));c.appendChild(rc0);}
+NT.forEach(function(a){
 var i=el('input');i.type='text';i.value=S[a[0]]||'';i.oninput=function(){S[a[0]]=i.value;};
 var rr=el('div','r');rr.style.margin='12px 0 0';rr.appendChild(fld(a[2],i));c.appendChild(rr);
 });}
