@@ -259,25 +259,21 @@ c.appendChild(el('div','lg','ירוק = רוצה · אדום = לא רוצה · 
 w.appendChild(c);
 }
 var MU=milUser();
-if(MU){
-c=el('div','c');
-var mh=el('div','hrow');mh.style.margin='0';
-mh.appendChild(el('div','h','חיוב'));
-mh.appendChild(btn(S.mil?'✓ מילואים':'מילואים',S.mil?'on':'n',function(){S.mil=!S.mil;draw();}));
-c.appendChild(mh);
-if(S.mil)c.appendChild(el('div','lg','החיוב יועבר לאישור '+MU.t));
-w.appendChild(c);
-}
 var NT=[['cm','comment','הערה לעצמי'],['cs','comment_to_sadran','הערה לסדרן'],['cp','comment_to_public','הערה ציבורית']].filter(function(a){return !!q(a[1]);});
-if(NT.length||CARS.length){
+if(NT.length||CARS.length||MU){
 c=el('div','c');
-var nFilled=NT.filter(function(a){return S[a[0]];}).length+(S.car&&S.car!='0'?1:0);
+var nFilled=NT.filter(function(a){return S[a[0]];}).length+(S.car&&S.car!='0'?1:0)+(S.mil?1:0);
 var nh=el('div','hrow tog');nh.style.margin='0';
 nh.appendChild(el('div','h','אפשרויות נוספות'+(nFilled?' ('+nFilled+')':'')));
 nh.appendChild(el('span','chev',S.notes?'▴':'▾'));
 nh.onclick=function(){S.notes=!S.notes;draw();};
 c.appendChild(nh);
 if(S.notes){
+if(MU){
+c.appendChild(el('div','sub','חיוב'));c.lastChild.style.margin='14px 0 6px';
+var sg=seg([['פרטי',false],['מילואים',true]],function(v){return !!S.mil==v;},function(v){S.mil=v;draw();});sg.style.margin='0';c.appendChild(sg);
+if(S.mil)c.appendChild(el('div','lg','החיוב יועבר לאישור '+MU.t));
+}
 if(CARS.length){var rc0=el('div','r');rc0.style.margin='12px 0 0';rc0.appendChild(fld('רכב מסוים',sel(CARS,S.car,function(v){S.car=v;draw();})));c.appendChild(rc0);}
 NT.forEach(function(a){
 var i=el('input');i.type='text';i.value=S[a[0]]||'';i.oninput=function(){S[a[0]]=i.value;};
