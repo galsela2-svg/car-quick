@@ -258,6 +258,16 @@ c.appendChild(el('div','lg','ירוק = רוצה · אדום = לא רוצה · 
 }
 w.appendChild(c);
 }
+var MU=milUser();
+if(MU){
+c=el('div','c');
+var mh=el('div','hrow');mh.style.margin='0';
+mh.appendChild(el('div','h','חיוב'));
+mh.appendChild(btn(S.mil?'✓ מילואים':'מילואים',S.mil?'on':'n',function(){S.mil=!S.mil;draw();}));
+c.appendChild(mh);
+if(S.mil)c.appendChild(el('div','lg','החיוב יועבר לאישור '+MU.t));
+w.appendChild(c);
+}
 var NT=[['cm','comment','הערה לעצמי'],['cs','comment_to_sadran','הערה לסדרן'],['cp','comment_to_public','הערה ציבורית']].filter(function(a){return !!q(a[1]);});
 if(NT.length||CARS.length){
 c=el('div','c');
@@ -279,6 +289,14 @@ if(cur())w.appendChild(btn('הסר את המשתמש '+cur().u+' מהטלפון'
 var bar=el('div','bar');bar.appendChild(btn('שלח הזמנה','go',send));box.appendChild(bar);
 }
 function setv(n,v){var e=q(n);if(!e)throw n;e.value=v;}
+function setIf(n,v){var e=q(n);if(e)e.value=v;}
+function milUser(){var s=q('user_id');if(!s)return null;var o=Array.prototype.filter.call(s.options,function(x){return /מילואים/.test(x.text);})[0];return o?{v:o.value,t:clean(o.text)}:null;}
+function applyMil(){
+var mu=milUser();if(!mu)throw 'משתמש המילואים לא נמצא באתר';
+for(var i=0;i<=10;i++){setIf('arr_auto_user[0]['+i+']','');setIf('arr_auto_user_name[0]['+i+']','');}
+for(var j=0;j<=9;j++){setIf('arr_req_user_id[0]['+j+']','');setIf('arr_req_user_name[0]['+j+']','');setIf('arr_req_text[0]['+j+']','');}
+setv('arr_req_user_id[0][0]',mu.v);setIf('arr_req_user_name[0][0]',mu.t);
+}
 function destName(){return (DEST.filter(function(x){return x.v==S.dest;})[0]||{}).t||'';}
 function sh(x){return site(x).replace(/-/g,'/');}
 function whenTxt(){return sh(S.sd)+' '+S.st+' עד '+(S.ed!=S.sd?sh(S.ed)+' ':'')+S.et;}
@@ -286,13 +304,14 @@ function send(){
 if(!S.dest){pickDest().then(function(v){if(v){S.dest=v;draw();send();}});return;}
 if(dur()<=0){say('שעת ההחזרה חייבת להיות אחרי שעת הקבלה');return;}
 var dn=destName(),when=whenTxt();
-ask('לשלוח הזמנה?',dn+'\n'+when,null,'שלח','ביטול').then(function(ok){if(ok)submit(dn,when);});
+ask('לשלוח הזמנה?',dn+'\n'+when+(S.mil?'\nחיוב: מילואים':''),null,'שלח','ביטול').then(function(ok){if(ok)submit(dn,when);});
 }
 function submit(dn,when){
 try{
 setv('start_date',site(S.sd));setv('end_date',site(S.ed));setv('start_time',S.st);setv('end_time',S.et);setv('dest',S.dest);
 var rc=q('req_car_id');if(rc)rc.value=S.car;
 [['cm','comment'],['cs','comment_to_sadran'],['cp','comment_to_public']].forEach(function(a){var e=q(a[1]);if(e)e.value=S[a[0]]||'';});
+if(S.mil)applyMil();
 GRPS.forEach(function(g){var v=P[g.id]==null?-1:Number(P[g.id]);Array.prototype.forEach.call(form.querySelectorAll('input[name="grp_val_'+g.id+'"]'),function(rr){rr.checked=Number(rr.value)==v;});});
 }catch(e){say('שדה לא נמצא בטופס: '+e);return;}
 sv('qbd',S.dest);
