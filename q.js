@@ -79,6 +79,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx button.g{background:rgb(22,163,74)!important;color:white!important}'+
 '.qbx button.x{background:rgb(225,45,45)!important;color:white!important}'+
 '.qbx button.n{background:rgb(236,238,242)!important;color:rgb(70,78,90)!important}'+
+'.qbx button.pk{background:rgb(236,72,153)!important;color:white!important}'+
 '.qbx .seg{display:flex;gap:4px;background:rgb(241,243,246);border-radius:14px;padding:4px;margin:0 0 12px}'+
 '.qbx .seg button{flex:1 1 0;border-radius:10px!important;background:transparent!important;color:rgb(70,78,90)!important;padding:10px 4px!important}'+
 '.qbx .seg button.on{background:white!important;color:rgb(0,100,160)!important;box-shadow:0 1px 3px rgba(0,0,0,.12)!important;font-weight:700}'+
@@ -140,11 +141,18 @@ var h=el('div','hdr');h.appendChild(el('b',null,'🚗 הזמנת רכב'));
 var hb=el('div','hb');hb.appendChild(btn('📋 ההזמנות שלי',null,ordersView));hb.appendChild(btn('✕',null,function(){box.remove();}));h.appendChild(hb);
 box.appendChild(h);
 var us=el('div','users');
-PR.list.forEach(function(p,i){us.appendChild(btn('👤 '+(p.u||'משתמש'),i==PR.cur?'on':'',function(){switchUser(i);}));});
+PR.list.forEach(function(p,i){us.appendChild(btn('👤 '+(p.u||'משתמש'),i==PR.cur?((p.u||'').indexOf('ניבה')>=0?'pk':'on'):'',function(){switchUser(i);}));});
 us.appendChild(btn('+ משתמש',null,function(){addUser().then(function(c){if(c)relogin();});}));
 box.appendChild(us);
-if(WHO&&form)box.appendChild(el('div','who','מחובר כעת: '+WHO));
 var w=el('div','wrap');box.appendChild(w);return w;
+}
+function short(t){
+if(/סטיישן/.test(t))return '5 סטיישן';
+if(/עגלה/.test(t))return 'רכב + עגלה (פרט בהערות)';
+if(/מטען/.test(t))return 'רכב מטען';
+if(/סטריה/.test(t))return '9 (סטריה)';
+var m=t.match(/(\d+)\s*מקומות/);
+return m?m[1]:t;
 }
 function idx(t){for(var i=0;i<TO.length;i++){if(TO[i].v==t)return i;}return 0;}
 function clampI(i){return i<0?0:i>TO.length-1?TO.length-1:i;}
@@ -216,13 +224,21 @@ c=el('div','c');
 c.appendChild(el('div','h','🚙 איזה רכב'));
 if(GRPS.length){
 ch=el('div','ch');
-GRPS.forEach(function(g){var v=P[g.id]==null?-1:Number(P[g.id]);ch.appendChild(btn((v==1?'✓ ':v==0?'✕ ':'')+g.t,v==1?'g':v==0?'x':'n',function(){P[g.id]=v==-1?1:v==1?0:-1;draw();}));});
+GRPS.forEach(function(g){var v=P[g.id]==null?-1:Number(P[g.id]);ch.appendChild(btn((v==1?'✓ ':v==0?'✕ ':'')+short(g.t),v==1?'g':v==0?'x':'n',function(){P[g.id]=v==-1?1:v==1?0:-1;draw();}));});
 c.appendChild(ch);
 c.appendChild(el('div','lg','ירוק = רוצה · אדום = לא רוצה · אפור = לא משנה'));
 }
 if(CARS.length){r=el('div','r');r.style.margin='12px 0 0';r.appendChild(fld('רכב מסוים',sel(CARS,S.car,function(v){S.car=v;draw();})));c.appendChild(r);}
 w.appendChild(c);
 }
+c=el('div','c');
+c.appendChild(el('div','h','📝 הערות'));
+[['cm','comment','הערה לעצמי'],['cs','comment_to_sadran','הערה לסדרן'],['cp','comment_to_public','הערה ציבורית']].forEach(function(a){
+if(!q(a[1]))return;
+var i=el('input');i.type='text';i.value=S[a[0]]||'';i.oninput=function(){S[a[0]]=i.value;};
+var rr=el('div','r');rr.appendChild(fld(a[2],i));c.appendChild(rr);
+});
+if(c.children.length>1){c.lastChild.style.marginBottom='0';w.appendChild(c);}
 if(cur())w.appendChild(btn('הסר את המשתמש '+cur().u+' מהטלפון','lnk ctrb',function(){ask('להסיר את '+cur().u+'?','שם המשתמש והקוד שלו יימחקו מהטלפון',null,'הסר','ביטול').then(function(ok){if(!ok)return;PR.list.splice(PR.cur,1);PR.cur=0;sv('qbu',PR);relogin();});}));
 var bar=el('div','bar');bar.appendChild(btn('שלח הזמנה','go',send));box.appendChild(bar);
 }
@@ -240,6 +256,7 @@ function submit(dn,when){
 try{
 setv('start_date',site(S.sd));setv('end_date',site(S.ed));setv('start_time',S.st);setv('end_time',S.et);setv('dest',S.dest);
 var rc=q('req_car_id');if(rc)rc.value=S.car;
+[['cm','comment'],['cs','comment_to_sadran'],['cp','comment_to_public']].forEach(function(a){var e=q(a[1]);if(e)e.value=S[a[0]]||'';});
 GRPS.forEach(function(g){var v=P[g.id]==null?-1:Number(P[g.id]);Array.prototype.forEach.call(form.querySelectorAll('input[name="grp_val_'+g.id+'"]'),function(rr){rr.checked=Number(rr.value)==v;});});
 }catch(e){say('שדה לא נמצא בטופס: '+e);return;}
 sv('qbd',S.dest);
