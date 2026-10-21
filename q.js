@@ -10,13 +10,15 @@ function getDoc(url){return fetch(url,{credentials:'same-origin'}).then(function
 function orderForm(doc){var s=doc.querySelector('[name="submit_order"]');return doc.querySelector('form[name="regular_order"]')||(s?s.form:null);}
 function loginForm(doc){var b=doc.querySelector('[name="front_login_btn"]');return b?b.form:null;}
 function ser(f){var b=new URLSearchParams();Array.prototype.forEach.call(f.elements,function(e){if(!e.name||e.disabled)return;var t=(e.type||'').toLowerCase();if(t=='submit'||t=='button'||t=='reset'||t=='file')return;if((t=='checkbox'||t=='radio')&&!e.checked)return;b.append(e.name,e.value);});return b;}
-function creds(){var c=ld('qbc',null);if(c&&c.c)return c;var u=prompt('פעם אחת בלבד - שם משתמש לאתר הרכבים (אם האתר לא מבקש שם משתמש, השאר ריק):','');if(u===null)return null;var k=prompt('קוד כניסה:','');if(!k)return null;c={u:u.trim(),c:k.trim()};sv('qbc',c);return c;}
+function creds(){var c=ld('qbc',null);if(c&&c.c)return Promise.resolve(c);return ask('כניסה לאתר הרכבים','פעם אחת בלבד - הפרטים נשמרים רק בטלפון',[{label:'שם משתמש (אם האתר לא מבקש, השאר ריק)'},{label:'קוד כניסה',type:'password'}],'שמור והתחבר','ביטול').then(function(v){if(!v||!v[1])return null;c={u:v[0].trim(),c:v[1].trim()};sv('qbc',c);return c;});}
 function doLogin(lf){
-var c=creds();if(!c)return Promise.reject('הכניסה בוטלה');
+return creds().then(function(c){
+if(!c)throw 'הכניסה בוטלה';
 Array.prototype.forEach.call(lf.querySelectorAll('input'),function(i){var t=(i.type||'text').toLowerCase();if(t=='password')i.value=c.c;else if(t=='text'||t=='tel'||t=='number'||t=='email')i.value=c.u;});
 var loc=lf.querySelector('[name="location"]');if(loc)loc.value='/order.php';
 var body=ser(lf);body.append('front_login_btn','כניסה');
 return fetch(lf.getAttribute('action')||'/login.php',{method:'POST',body:body,credentials:'same-origin'}).then(function(){return getDoc('/order.php');});
+});
 }
 function withLogin(url){return getDoc(url).then(function(doc){var lf=loginForm(doc);if(!lf)return doc;return doLogin(lf).then(function(){return getDoc(url);}).then(function(doc2){if(loginForm(doc2)){localStorage.removeItem('qbc');throw 'הכניסה נכשלה - שם המשתמש או הקוד שגויים. לחץ שוב על הסימנייה כדי להזין אותם מחדש';}return doc2;});});}
 var form=null,DEST=[],CARS=[],GRPS=[];
@@ -89,7 +91,9 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .kv .v{flex:1 1 0;min-width:0;font-weight:600;font-size:15px;text-align:right}'+
 '.qbx .msg{font-size:14px;background:rgb(248,249,251);border-radius:12px;padding:10px 12px;margin:10px 0 0;text-align:right;white-space:pre-line}'+
 '.qbx .ord.hl{box-shadow:0 0 0 2px rgb(0,128,188)!important}'+
-'.qbx .acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:4px 0 0}';
+'.qbx .acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:4px 0 0}'+
+'.qbx .mdl{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10;background:rgba(15,20,30,.45);display:flex;align-items:center;justify-content:center;padding:20px}'+
+'.qbx .mdl .c{flex:1 1 0;max-width:420px;margin:0}';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 function el(t,c,x){var e=d.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
 function btn(x,c,f){var b=el('button',c,x);b.type='button';b.onclick=f;return b;}
@@ -98,6 +102,17 @@ function fld(lbl,inp){var l=el('label','f');if(lbl)l.appendChild(el('span',null,
 function dateIn(v,f){var i=el('input');i.type='date';i.value=v;i.onchange=function(){if(i.value)f(i.value);};return i;}
 function seg(items,isOn,onTap){var s=el('div','seg');items.forEach(function(it){s.appendChild(btn(it[0],isOn(it[1])?'on':'',function(){onTap(it[1]);}));});return s;}
 function keepDur(fn){var h=dur();fn();setDur(h>0?h:2);draw();}
+function ask(title,text,inputs,ok,cancel){return new Promise(function(res){
+var m=el('div','mdl');var c=el('div','c');
+if(title)c.appendChild(el('div','ttl',title));
+if(text)c.appendChild(el('div','msg ctr',text));
+var ins=(inputs||[]).map(function(p){var i=el('input');i.type=p.type||'text';var wr=el('div','r');wr.style.marginTop='12px';wr.appendChild(fld(p.label,i));c.appendChild(wr);return i;});
+var a=el('div','acts');a.style.marginTop='14px';
+a.appendChild(btn(ok||'אישור','on',function(){m.remove();res(ins.length?ins.map(function(i){return i.value;}):true);}));
+if(cancel)a.appendChild(btn(cancel,null,function(){m.remove();res(null);}));
+c.appendChild(a);m.appendChild(c);box.appendChild(m);
+});}
+function say(t){return ask('',t,null,'סגור',null);}
 function back(){if(form)draw();else box.remove();}
 function shell(){
 box.innerHTML='';box.appendChild(el('style',null,css));
@@ -147,7 +162,7 @@ c.appendChild(el('div','lg','ירוק = רוצה · אדום = לא רוצה · 
 if(CARS.length){r=el('div','r');r.style.margin='12px 0 0';r.appendChild(fld('רכב מסוים',sel(CARS,S.car,function(v){S.car=v;draw();})));c.appendChild(r);}
 w.appendChild(c);
 }
-w.appendChild(btn('שכחתי את פרטי הכניסה','lnk ctrb',function(){if(confirm('למחוק את שם המשתמש והקוד השמורים בטלפון?')){localStorage.removeItem('qbc');alert('נמחק. בפעם הבאה תתבקש להזין אותם שוב');}}));
+w.appendChild(btn('שכחתי את פרטי הכניסה','lnk ctrb',function(){ask('למחוק את פרטי הכניסה?','שם המשתמש והקוד השמורים בטלפון יימחקו',null,'מחק','ביטול').then(function(ok){if(!ok)return;localStorage.removeItem('qbc');say('נמחק. בפעם הבאה תתבקש להזין אותם שוב');});}));
 var bar=el('div','bar');bar.appendChild(btn('שלח הזמנה','go',send));box.appendChild(bar);
 }
 function setv(n,v){var e=q(n);if(!e)throw n;e.value=v;}
@@ -155,15 +170,17 @@ function destName(){return (DEST.filter(function(x){return x.v==S.dest;})[0]||{}
 function sh(x){return site(x).replace(/-/g,'/');}
 function whenTxt(){return sh(S.sd)+' '+S.st+' עד '+(S.ed!=S.sd?sh(S.ed)+' ':'')+S.et;}
 function send(){
-if(!S.dest){alert('בחר יעד');return;}
-if(dur()<=0){alert('שעת ההחזרה חייבת להיות אחרי שעת הקבלה');return;}
+if(!S.dest){say('בחר יעד');return;}
+if(dur()<=0){say('שעת ההחזרה חייבת להיות אחרי שעת הקבלה');return;}
 var dn=destName(),when=whenTxt();
-if(!confirm('לשלוח הזמנה?\n'+dn+'\n'+when))return;
+ask('לשלוח הזמנה?',dn+'\n'+when,null,'שלח','ביטול').then(function(ok){if(ok)submit(dn,when);});
+}
+function submit(dn,when){
 try{
 setv('start_date',site(S.sd));setv('end_date',site(S.ed));setv('start_time',S.st);setv('end_time',S.et);setv('dest',S.dest);
 var rc=q('req_car_id');if(rc)rc.value=S.car;
 GRPS.forEach(function(g){var v=P[g.id]==null?-1:Number(P[g.id]);Array.prototype.forEach.call(form.querySelectorAll('input[name="grp_val_'+g.id+'"]'),function(rr){rr.checked=Number(rr.value)==v;});});
-}catch(e){alert('שדה לא נמצא בטופס: '+e);return;}
+}catch(e){say('שדה לא נמצא בטופס: '+e);return;}
 sv('qbd',S.dest);
 var body=ser(form);
 body.append('submit_order','שלח הזמנה');
@@ -228,7 +245,7 @@ var list=parseOrders(doc);
 if(!list.length){var nc=doc.querySelector('.no-content');var c=el('div','c');c.appendChild(el('div','ttl',nc?clean(nc.textContent):'לא נמצאו הזמנות'));w.appendChild(c);}
 list.forEach(function(o){orderCard(o,w,false,true);});
 var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));w.appendChild(a);
-}).catch(function(e){alert(String(e));back();});
+}).catch(function(e){say(String(e)).then(back);});
 }
 function done(html,dn,when){
 var doc=new DOMParser().parseFromString(html,'text/html');
@@ -273,5 +290,5 @@ d.body.appendChild(box);
 loading('מתחבר…');
 var live=orderForm(d);
 if(live){init(live);return;}
-withLogin('/order.php').then(function(doc){var f=orderForm(doc);if(!f)throw 'לא נמצא דף ההזמנה באתר';return f;}).then(init).catch(function(e){box.remove();alert(String(e));});
+withLogin('/order.php').then(function(doc){var f=orderForm(doc);if(!f)throw 'לא נמצא דף ההזמנה באתר';return f;}).then(init).catch(function(e){say(String(e)).then(function(){box.remove();});});
 })();
