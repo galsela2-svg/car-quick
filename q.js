@@ -126,7 +126,9 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
+var VER='22.10-1';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
+['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
 ['כתום','194,65,12','234,88,12','255,237,213'],
 ['כחול','0,84,140','0,128,188','234,245,255'],
@@ -295,6 +297,7 @@ var rr=el('div','r');rr.style.margin='12px 0 0';rr.appendChild(fld(a[2],i));c.ap
 w.appendChild(c);
 }
 if(cur())w.appendChild(btn('הסר את המשתמש '+cur().u+' מהטלפון','lnk ctrb',function(){ask('להסיר את '+cur().u+'?','שם המשתמש והקוד שלו יימחקו מהטלפון',null,'הסר','ביטול').then(function(ok){if(!ok)return;PR.list.splice(PR.cur,1);PR.cur=0;sv('qbu',PR);relogin();});}));
+w.appendChild(el('div','lg','גרסה '+VER));
 var bar=el('div','bar');bar.appendChild(btn('שלח הזמנה','go',send));box.appendChild(bar);
 }
 function setv(n,v){var e=q(n);if(!e)throw n;e.value=v;}
