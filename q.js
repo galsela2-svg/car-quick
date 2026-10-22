@@ -91,6 +91,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .tv b{font-size:20px;font-weight:800;color:var(--a);line-height:1.1}'+
 '.qbx .tv small{font-size:11px;color:rgb(130,138,150)}'+
 '.qbx .ar{flex:1 1 0;height:2px;background:rgb(225,229,235);border-radius:2px}'+
+'.qbx .cap{font-size:12px;font-weight:700;color:var(--a);margin:10px 6px 4px;text-align:right}'+
 '.qbx .raw{font-size:11px;color:rgb(130,138,150);margin-top:8px;direction:rtl;word-break:break-word}'+
 '.qbx .bk.gap{background:rgb(237,239,242);box-shadow:none!important;padding:10px 16px}'+
 '.qbx .bk.gap .tv b{color:rgb(140,148,160);font-size:16px}'+
@@ -148,7 +149,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-15';
+var VER='22.10-16';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -492,18 +493,17 @@ var ttl=e.getAttribute('title')||'';var te=e.querySelector('[title]');if(!ttl&&t
 var a=tOf(r.left),b=tOf(r.right);var s=Math.max(0,Math.min(a,b)),en=Math.min(24,Math.max(a,b));
 var parts=ttl.split(/<br\s*\/?>|\n/i).map(clean).filter(String);
 var nm=parts.filter(function(x){return !/\d{1,2}:\d{2}/.test(x);}).join(' · ')||t;
-var gs=s,ge=en,sT='',eT='',skip=false;
+var gs=s,ge=en,sT='',eT='',skip=false,sDay='',eDay='';
 var tre=/(?:(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\s*)?(\d{1,2}):(\d{2})/g,mt,TM=[];
 while((mt=tre.exec(ttl))&&TM.length<4)TM.push(mt);
 if(TM.length>=2){
 var A=TM[0],B=TM[1];
-if(A[1]&&B[1]&&day0){
-var mkD=function(x){var y=x[3]?Number(x[3]):day0.getFullYear();if(y<100)y+=2000;return new Date(y,Number(x[2])-1,Number(x[1]),Number(x[4]),Number(x[5]));};
+if((A[1]||B[1])&&day0){
+var mkD=function(x){var o=x===A?B:A;var dd=x[1]||o[1],mo=x[2]||o[2],yy=x[3]||o[3];var y=yy?Number(yy):day0.getFullYear();if(y<100)y+=2000;return new Date(y,Number(mo)-1,Number(dd),Number(x[4]),Number(x[5]));};
 var SA=mkD(A),SB=mkD(B);if(SA>SB){var tmp=SA;SA=SB;SB=tmp;}
 var rs=(SA-day0)/3600000,re2=(SB-day0)/3600000;
 if(re2<=0||rs>=24)skip=true;
-var lab=function(D){var same=iso(D)==iso(day0);return (same?'':p2(D.getDate())+'/'+p2(D.getMonth()+1)+' ')+hm(D);};
-s=Math.max(0,rs);en=Math.min(24,re2);sT=lab(SA);eT=lab(SB);
+s=Math.max(0,rs);en=Math.min(24,re2);sT=hm(SA);eT=hm(SB);var sDay=iso(SA),eDay=iso(SB);
 }else{
 var Ah=Number(A[4])+Number(A[5])/60,Bh=Number(B[4])+Number(B[5])/60,At=p2(Number(A[4]))+':'+A[5],Bt=p2(Number(B[4]))+':'+B[5];
 var s1,e1,s1T,e1T;
@@ -511,7 +511,7 @@ if(Math.abs(Ah-gs)+Math.abs(Bh-ge)<=Math.abs(Bh-gs)+Math.abs(Ah-ge)){s1=Ah;e1=Bh
 if(Math.abs(s1-gs)<1.5&&Math.abs(e1-ge)<1.5&&s1<e1){s=s1;en=e1;sT=s1T;eT=e1T;}
 }}
 var ds=t.indexOf(nm)==0?clean(t.slice(nm.length)):'';if(/(…|\.\.\.)$/.test(ds))ds='';
-if(!skip&&en-s>0.02)row.bars.push({s:s,e:en,sT:sT,eT:eT,t:nm,d:ds,raw:clean(ttl.replace(/<br\s*\/?>/gi,' | '))+(t&&t!=nm?' || '+t:'')});
+if(!skip&&en-s>0.02)row.bars.push({s:s,e:en,sT:sT,eT:eT,sDay:sDay,eDay:eDay,t:nm,d:ds,raw:clean(ttl.replace(/<br\s*\/?>/gi,' | '))+(t&&t!=nm?' || '+t:'')});
 });
 rows.forEach(function(w){w.bars.sort(function(x,y){return x.s-y.s;});});
 rows=rows.filter(function(w){return w.num||w.plate||w.bars.length;});
@@ -527,6 +527,9 @@ function withGaps(bars){var out=[];bars.forEach(function(b,i){out.push(b);var nx
 function bookingCard(b,parent){
 var isToday=SCH.date==iso(new Date());var nw=new Date();var nh=nw.getHours()+nw.getMinutes()/60;
 var active=isToday&&b.s<=nh&&nh<b.e,past=isToday&&b.e<=nh;
+var dm=function(x){var a=x.split('-');return a[2]+'/'+a[1];};
+if(!b.gap&&b.sDay&&b.sDay<SCH.date)parent.appendChild(el('div','cap','נסיעה מתאריך '+dm(b.sDay)));
+else if(!b.gap&&b.eDay&&b.eDay>SCH.date)parent.appendChild(el('div','cap','ממשיכה עד '+dm(b.eDay)));
 var c=el('div','c bk'+(active?' now':'')+(past?' past':'')+(b.gap?' gap':''));
 var m=el('div','bkm');m.appendChild(timeRow(b.sT||fmtT(b.s),b.eT||fmtT(b.e)));m.appendChild(el('div','bkn',b.t));if(b.d)m.appendChild(el('div','bkd',b.d));c.appendChild(m);
 if(b.gap&&active){var sg=el('div','bks');sg.appendChild(el('div','lbl2','פנוי עכשיו'));c.appendChild(sg);parent.appendChild(c);return;}
