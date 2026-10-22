@@ -148,7 +148,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-11';
+var VER='22.10-12';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -559,11 +559,11 @@ var curRow=SCH.rows.filter(function(x){return x.key==SV.car;})[0];
 var ci=el('input');ci.type='search';ci.placeholder='מספר רכב, דגם או מספר רישוי';ci.value=curRow?carTitle(curRow):'';
 var cl=el('div','clist');cl.style.display='none';
 function fillCars(qv){cl.innerHTML='';
-if(!qv){var it0=el('div','opt'+(!SV.car?' cur':''),'כל הרכבים');it0.onclick=function(){SV.car='';SV.res=null;schDraw();};cl.appendChild(it0);}
+if(!qv){var it0=el('div','opt'+(!SV.car?' cur':''),'כל הרכבים');it0.onclick=function(){SV.car='';SV.res=null;if(SV.hour)showSch();else schDraw();};cl.appendChild(it0);}
 var L=SCH.rows.map(function(x){return {x:x,k:carRank(x,qv)};}).filter(function(o){return o.k<9;});
 L.sort(function(a,b){return a.k-b.k||(Number(a.x.num)||0)-(Number(b.x.num)||0);});
 if(qv&&!L.length)cl.appendChild(el('div','opt lg','לא נמצא רכב'));
-L.forEach(function(o){var x=o.x;var it=el('div','opt'+(x.key==SV.car?' cur':''));it.appendChild(el('div','ot',carTitle(x)));if(x.plate)it.appendChild(el('div','os',x.plate));it.onclick=function(){SV.car=x.key;SV.res=null;schDraw();};cl.appendChild(it);});
+L.forEach(function(o){var x=o.x;var it=el('div','opt'+(x.key==SV.car?' cur':''));it.appendChild(el('div','ot',carTitle(x)));if(x.plate)it.appendChild(el('div','os',x.plate));it.onclick=function(){SV.car=x.key;SV.res=null;showSch();};cl.appendChild(it);});
 cl.style.display='block';}
 ci.onfocus=function(){fillCars('');try{ci.select();}catch(e){}};ci.oninput=function(){fillCars(ci.value.trim());};
 ci.onblur=function(){setTimeout(function(){cl.style.display='none';ci.value=curRow?carTitle(curRow):'';},250);};
@@ -571,8 +571,9 @@ var r=el('div','r');r.style.marginBottom='0';r.appendChild(fld('רכב',ci));c.a
 if(curRow&&curRow.plate){var pl0=el('div','lg',curRow.plate);pl0.style.marginTop='4px';c.appendChild(pl0);}
 c.appendChild(cl);
 r=el('div','r');r.style.marginTop='12px';
-r.appendChild(fld('תאריך',dateIn(SV.date,function(v){SV.date=v;SV.res=null;schDraw();})));
-r.appendChild(fld('שעה (לא חובה)',sel([{v:'',t:'כל היום'}].concat(TO),SV.hour,function(v){SV.hour=v;SV.res=null;schDraw();})));
+var auto=function(){SV.res=null;if(SV.car||SV.hour)showSch();else schDraw();};
+r.appendChild(fld('תאריך',dateIn(SV.date,function(v){SV.date=v;auto();})));
+r.appendChild(fld('שעה (לא חובה)',sel([{v:'',t:'כל היום'}].concat(TO),SV.hour,function(v){SV.hour=v;auto();})));
 c.appendChild(r);
 var a=el('div','acts');a.appendChild(btn(SV.busy?'טוען…':'הצג','on',showSch));c.appendChild(a);
 w.appendChild(c);
