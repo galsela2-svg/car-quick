@@ -149,7 +149,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-16';
+var VER='22.10-17';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -434,7 +434,10 @@ function loadFrame(url){return new Promise(function(res,rej){var f=schFrame();va
 function shownDate(doc){var m=((doc&&doc.body&&doc.body.innerText)||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(!m)return null;var y=Number(m[3]);if(y<100)y+=2000;return y+'-'+p2(Number(m[2]))+'-'+p2(Number(m[1]));}
 function findClick(doc,re){var all=doc.querySelectorAll('a,button,input,li,span,div,td');for(var i=0;i<all.length;i++){var e=all[i];var t=clean(e.value||e.textContent);if(t.length<20&&re.test(t)&&!e.querySelector('a,button,input'))return e;}return null;}
 function waitDate(target,ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(doc&&doc.body&&shownDate(doc)==target)return setTimeout(function(){res(IFR.contentDocument);},500);if(Date.now()-t0>ms)return res(null);setTimeout(poll,300);})();});}
-function stepDay(dir){var doc=IFR.contentDocument;var cur=shownDate(doc);var b=findClick(doc,dir>0?/יום הבא/:/יום קודם/);if(!cur||!b)return Promise.reject('לא הצלחתי לעבור תאריך בסידור');var nt=mk(cur,'12:00');nt.setDate(nt.getDate()+dir);b.click();return waitDate(iso(nt),12000).then(function(x){if(!x)throw 'מעבר התאריך בסידור נכשל';return waitRows(10000);});}
+function findNav(doc,word){var best=null,bn=1e9;Array.prototype.forEach.call(doc.querySelectorAll('*'),function(e){if(e.tagName=='SCRIPT'||e.tagName=='STYLE')return;var t=clean(e.value||e.textContent);if(t.length>25||t.indexOf(word)<0)return;var n=e.getElementsByTagName('*').length;if(n<bn){bn=n;best=e;}});if(!best)return null;return best.closest('a,button,[onclick],li')||best;}
+function stepDay(dir){var doc=IFR.contentDocument;var cur=shownDate(doc);var b=findNav(doc,dir>0?'יום הבא':'יום קודם');
+if(!cur||!b)return Promise.reject('לא הצלחתי לעבור תאריך בסידור (תאריך: '+(cur||'לא נמצא')+' · כפתור: '+(b?'נמצא':'לא נמצא')+')');
+['mousedown','mouseup'].forEach(function(t){try{b.dispatchEvent(new MouseEvent(t,{bubbles:true}));}catch(e){}});var nt=mk(cur,'12:00');nt.setDate(nt.getDate()+dir);b.click();return waitDate(iso(nt),12000).then(function(x){if(!x)throw 'מעבר התאריך בסידור נכשל (נלחץ: '+clean(b.outerHTML).slice(0,140)+' · תאריך מוצג: '+(shownDate(IFR.contentDocument)||'?')+')';return waitRows(10000);});}
 function gotoDate(target){var cur=shownDate(IFR.contentDocument);if(!cur)return Promise.reject('לא זוהה תאריך בסידור');var diff=Math.round((mk(target,'12:00')-mk(cur,'12:00'))/86400000);if(Math.abs(diff)>31)return Promise.reject('אפשר לבחור עד חודש מהיום');var p=Promise.resolve();for(var i=0;i<Math.abs(diff);i++){p=p.then(function(){return stepDay(diff>0?1:-1);});}return p.then(function(){return IFR.contentDocument;});}
 var PRE=/(\d{2,3}) ?[-‐-―־−] ?(\d{2,3}) ?[-‐-―־−] ?(\d{2,3})/;
 function nbidi(s){return (s||'').replace(/[‎‏‪-‮⁦-⁩ ]/g,' ').replace(/ +/g,' ');}
