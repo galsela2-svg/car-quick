@@ -126,7 +126,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-5';
+var VER='22.10-6';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -410,14 +410,17 @@ function findClick(doc,re){var all=doc.querySelectorAll('a,button,input,li,span,
 function waitDate(target,ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(doc&&doc.body&&shownDate(doc)==target)return setTimeout(function(){res(IFR.contentDocument);},500);if(Date.now()-t0>ms)return res(null);setTimeout(poll,300);})();});}
 function stepDay(dir){var doc=IFR.contentDocument;var cur=shownDate(doc);var b=findClick(doc,dir>0?/יום הבא/:/יום קודם/);if(!cur||!b)return Promise.reject('לא הצלחתי לעבור תאריך בסידור');var nt=mk(cur,'12:00');nt.setDate(nt.getDate()+dir);b.click();return waitDate(iso(nt),12000).then(function(x){if(!x)throw 'מעבר התאריך בסידור נכשל';return waitRows(10000);});}
 function gotoDate(target){var cur=shownDate(IFR.contentDocument);if(!cur)return Promise.reject('לא זוהה תאריך בסידור');var diff=Math.round((mk(target,'12:00')-mk(cur,'12:00'))/86400000);if(Math.abs(diff)>31)return Promise.reject('אפשר לבחור עד חודש מהיום');var p=Promise.resolve();for(var i=0;i<Math.abs(diff);i++){p=p.then(function(){return stepDay(diff>0?1:-1);});}return p.then(function(){return IFR.contentDocument;});}
-var PRE=/\d{2,3}-\d{2,3}-\d{2,3}/;
-function plateNodes(doc){var out=[];if(!doc||!doc.body)return out;var tw=doc.createTreeWalker(doc.body,4,null);var nd;while((nd=tw.nextNode())){var m=nd.nodeValue.match(PRE);if(m&&nd.parentNode)out.push({e:nd.parentNode,t:m[0]});}
-Array.prototype.forEach.call(doc.querySelectorAll('input,[title],[data-title]'),function(e){var v=(e.tagName=='INPUT'?e.value:'')||'';var m=v.match(PRE);if(m)out.push({e:e,t:m[0]});});
+var PRE=/(\d{2,3}) ?[-‐-―־−] ?(\d{2,3}) ?[-‐-―־−] ?(\d{2,3})/;
+function nbidi(s){return (s||'').replace(/[‎‏‪-‮⁦-⁩ ]/g,' ').replace(/ +/g,' ');}
+function plateOf(s){var m=nbidi(s).match(PRE);return m?m[1]+'-'+m[2]+'-'+m[3]:null;}
+function plateNodes(doc){var out=[];if(!doc||!doc.body)return out;var tw=doc.createTreeWalker(doc.body,4,null);var nd;while((nd=tw.nextNode())){var p=plateOf(nd.nodeValue);if(p&&nd.parentNode)out.push({e:nd.parentNode,t:p});}
+Array.prototype.forEach.call(doc.querySelectorAll('input'),function(e){var p=plateOf(e.value);if(p)out.push({e:e,t:p});});
 return out;}
+function digitSample(doc){var out=[];if(!doc||!doc.body)return '';var tw=doc.createTreeWalker(doc.body,4,null);var nd;while((nd=tw.nextNode())&&out.length<3){var v=nd.nodeValue;if(/\d{3}/.test(v)&&!/\d{1,2}\/\d{1,2}/.test(v)){out.push(v.trim().slice(0,24)+' ['+v.trim().slice(0,12).split('').map(function(ch){return /\d/.test(ch)?'':ch.charCodeAt(0).toString(16);}).filter(String).join(',')+']');}}return out.join(' | ');}
 function resList(doc){try{return doc.defaultView.performance.getEntriesByType('resource').filter(function(x){return /xmlhttprequest|fetch|iframe/.test(x.initiatorType)||/\.php/.test(x.name);}).map(function(x){return x.name.replace(/^https?:\/\/[^\/]+/,'');}).slice(0,6).join(' , ');}catch(e){return '?';}}
 function waitRows(ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(plateNodes(doc).length>2||Date.now()-t0>ms)return setTimeout(function(){res(IFR.contentDocument);},300);setTimeout(poll,400);})();});}
 function diag(doc,extra){var b=(doc&&doc.body)||null;var tx=b?clean(b.innerText||b.textContent).slice(0,140):'';var q0=function(s){try{return doc.querySelectorAll(s).length;}catch(e){return '?';}};
-return '\n('+(extra||'')+' רישויים: '+plateNodes(doc).length+' · iframe: '+q0('iframe')+' · canvas: '+q0('canvas')+' · svg: '+q0('svg')+' · tr: '+q0('tr')+' · div: '+q0('div')+' · בקשות: '+resList(doc)+' · טקסט: '+tx.slice(-80)+')';}
+return '\n('+(extra||'')+' רישויים: '+plateNodes(doc).length+' · iframe: '+q0('iframe')+' · canvas: '+q0('canvas')+' · svg: '+q0('svg')+' · tr: '+q0('tr')+' · div: '+q0('div')+' · בקשות: '+resList(doc)+' · דוגמה: '+digitSample(doc)+')';}
 function parseSchedule(doc){
 var win=doc.defaultView,H={},all=doc.body.getElementsByTagName('*');
 Array.prototype.forEach.call(all,function(e){if(e.children.length)return;var t=clean(e.textContent);if(!/^\d{1,2}$/.test(t))return;var h=Number(t);if(h>23)return;var r=e.getBoundingClientRect();if(r.width<3||r.height<3)return;if(!H[h]||r.top<H[h].top)H[h]={top:r.top,c:(r.left+r.right)/2};});
