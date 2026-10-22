@@ -126,7 +126,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-4';
+var VER='22.10-5';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -403,16 +403,21 @@ var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.app
 }).catch(function(e){say(String(e)).then(back);});
 }
 var SCH=null,IFR=null,SV={car:'',date:'',hour:'',res:null,busy:false};
-function schFrame(){if(IFR&&IFR.parentNode)return IFR;IFR=el('iframe');IFR.setAttribute('sandbox','allow-same-origin allow-scripts allow-forms');IFR.style.cssText='position:absolute;left:-30000px;top:0;width:1100px;height:6000px;border:0;visibility:hidden';d.body.appendChild(IFR);return IFR;}
+function schFrame(){if(IFR&&IFR.parentNode)return IFR;IFR=el('iframe');IFR.setAttribute('sandbox','allow-same-origin allow-scripts allow-forms');IFR.style.cssText='position:fixed;left:0;top:0;width:1100px;height:6000px;border:0;opacity:0.01;pointer-events:none;z-index:1';d.body.appendChild(IFR);return IFR;}
 function loadFrame(url){return new Promise(function(res,rej){var f=schFrame();var fin=false;f.onload=function(){if(fin)return;fin=true;setTimeout(function(){res(f.contentDocument);},500);};f.src=url;setTimeout(function(){if(!fin){fin=true;rej('הסידור לא נטען');}},25000);});}
 function shownDate(doc){var m=((doc&&doc.body&&doc.body.innerText)||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(!m)return null;var y=Number(m[3]);if(y<100)y+=2000;return y+'-'+p2(Number(m[2]))+'-'+p2(Number(m[1]));}
 function findClick(doc,re){var all=doc.querySelectorAll('a,button,input,li,span,div,td');for(var i=0;i<all.length;i++){var e=all[i];var t=clean(e.value||e.textContent);if(t.length<20&&re.test(t)&&!e.querySelector('a,button,input'))return e;}return null;}
 function waitDate(target,ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(doc&&doc.body&&shownDate(doc)==target)return setTimeout(function(){res(IFR.contentDocument);},500);if(Date.now()-t0>ms)return res(null);setTimeout(poll,300);})();});}
 function stepDay(dir){var doc=IFR.contentDocument;var cur=shownDate(doc);var b=findClick(doc,dir>0?/יום הבא/:/יום קודם/);if(!cur||!b)return Promise.reject('לא הצלחתי לעבור תאריך בסידור');var nt=mk(cur,'12:00');nt.setDate(nt.getDate()+dir);b.click();return waitDate(iso(nt),12000).then(function(x){if(!x)throw 'מעבר התאריך בסידור נכשל';return waitRows(10000);});}
 function gotoDate(target){var cur=shownDate(IFR.contentDocument);if(!cur)return Promise.reject('לא זוהה תאריך בסידור');var diff=Math.round((mk(target,'12:00')-mk(cur,'12:00'))/86400000);if(Math.abs(diff)>31)return Promise.reject('אפשר לבחור עד חודש מהיום');var p=Promise.resolve();for(var i=0;i<Math.abs(diff);i++){p=p.then(function(){return stepDay(diff>0?1:-1);});}return p.then(function(){return IFR.contentDocument;});}
-function plateNodes(doc){var out=[];if(!doc||!doc.body)return out;var tw=doc.createTreeWalker(doc.body,4,null);var nd;while((nd=tw.nextNode())){var m=nd.nodeValue.match(/\d{2,3}-\d{2,3}-\d{2,3}/);if(m&&nd.parentNode)out.push({e:nd.parentNode,t:m[0]});}return out;}
+var PRE=/\d{2,3}-\d{2,3}-\d{2,3}/;
+function plateNodes(doc){var out=[];if(!doc||!doc.body)return out;var tw=doc.createTreeWalker(doc.body,4,null);var nd;while((nd=tw.nextNode())){var m=nd.nodeValue.match(PRE);if(m&&nd.parentNode)out.push({e:nd.parentNode,t:m[0]});}
+Array.prototype.forEach.call(doc.querySelectorAll('input,[title],[data-title]'),function(e){var v=(e.tagName=='INPUT'?e.value:'')||'';var m=v.match(PRE);if(m)out.push({e:e,t:m[0]});});
+return out;}
+function resList(doc){try{return doc.defaultView.performance.getEntriesByType('resource').filter(function(x){return /xmlhttprequest|fetch|iframe/.test(x.initiatorType)||/\.php/.test(x.name);}).map(function(x){return x.name.replace(/^https?:\/\/[^\/]+/,'');}).slice(0,6).join(' , ');}catch(e){return '?';}}
 function waitRows(ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(plateNodes(doc).length>2||Date.now()-t0>ms)return setTimeout(function(){res(IFR.contentDocument);},300);setTimeout(poll,400);})();});}
-function diag(doc,extra){var b=(doc&&doc.body)||null;var tx=b?clean(b.innerText||b.textContent).slice(0,140):'';return '\n('+(extra||'')+' רישויים: '+plateNodes(doc).length+' · כתובת: '+(doc&&doc.location?doc.location.pathname:'?')+' · טקסט: '+tx+')';}
+function diag(doc,extra){var b=(doc&&doc.body)||null;var tx=b?clean(b.innerText||b.textContent).slice(0,140):'';var q0=function(s){try{return doc.querySelectorAll(s).length;}catch(e){return '?';}};
+return '\n('+(extra||'')+' רישויים: '+plateNodes(doc).length+' · iframe: '+q0('iframe')+' · canvas: '+q0('canvas')+' · svg: '+q0('svg')+' · tr: '+q0('tr')+' · div: '+q0('div')+' · בקשות: '+resList(doc)+' · טקסט: '+tx.slice(-80)+')';}
 function parseSchedule(doc){
 var win=doc.defaultView,H={},all=doc.body.getElementsByTagName('*');
 Array.prototype.forEach.call(all,function(e){if(e.children.length)return;var t=clean(e.textContent);if(!/^\d{1,2}$/.test(t))return;var h=Number(t);if(h>23)return;var r=e.getBoundingClientRect();if(r.width<3||r.height<3)return;if(!H[h]||r.top<H[h].top)H[h]={top:r.top,c:(r.left+r.right)/2};});
