@@ -81,6 +81,20 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx button.x{background:rgb(225,45,45)!important;color:white!important}'+
 '.qbx button.n{background:rgb(236,238,242)!important;color:rgb(70,78,90)!important}'+
 '.qbx .tog{cursor:pointer}'+
+'.qbx .ot{font-weight:600}'+
+'.qbx .os{font-size:12px;color:rgb(120,128,140);margin-top:2px}'+
+'.qbx .gh{font-weight:800;font-size:15px;margin:16px 4px 8px;text-align:right}'+
+'.qbx .bk{display:flex;align-items:center;gap:12px;padding:14px 16px}'+
+'.qbx .bkm{flex:1 1 0;min-width:0}'+
+'.qbx .bkt{direction:ltr;unicode-bidi:isolate;text-align:right;font-size:20px;font-weight:800;color:var(--a);padding:0 0 8px;margin:0 0 8px;border-bottom:1px solid rgb(232,235,240)}'+
+'.qbx .bkn{font-size:17px;font-weight:700;text-align:right}'+
+'.qbx .bkd{font-size:13px;color:rgb(110,118,130);margin-top:2px;text-align:right}'+
+'.qbx .bks{flex:0 0 auto;min-width:58px;text-align:center}'+
+'.qbx .ico{width:46px;height:46px;border-radius:999px;background:var(--s);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto}'+
+'.qbx .lbl{font-size:12px;font-weight:800;color:var(--a);margin-top:4px}'+
+'.qbx .lbl2{font-size:12px;color:rgb(140,148,160)}'+
+'.qbx .bk.now{box-shadow:0 0 0 2px var(--b),0 6px 16px rgba(16,24,40,.08)!important}'+
+'.qbx .bk.past{opacity:.6}'+
 '.qbx .clist{max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:white;border:1px solid rgb(226,230,236);border-radius:12px;margin:8px 0 0;box-shadow:0 6px 16px rgba(16,24,40,.08)}'+
 '.qbx .opt{padding:13px 14px;border-bottom:1px solid rgb(240,242,245);text-align:right;font-size:16px;cursor:pointer}'+
 '.qbx .opt:last-child{border-bottom:0}'+
@@ -126,7 +140,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-8';
+var VER='22.10-9';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -449,13 +463,14 @@ groups.forEach(function(g,i){
 var num=(g.items.filter(function(x){return /^\d{1,4}$/.test(x.t);})[0]||{}).t||'';
 var mdl=(g.items.filter(function(x){return !/^\d+$/.test(x.t)&&!/[\/:]/.test(x.t);})[0]||{}).t||'';
 if(!num&&!mdl)return;
-var cm=CMAP[num||'0'];var pl=cm&&(num||(mdl&&cm.desc.indexOf(mdl)>=0))?cm.plate:'';
-rows.push({num:num,plate:pl,key:num?'n'+num:'r'+i,model:mdl,top:g.cy-gap/2,bot:g.cy+gap/2,bars:[]});
+var cm=CMAP[num||'0'];var ok0=cm&&(num||(mdl&&cm.desc.indexOf(mdl)>=0));var pl=ok0?cm.plate:'';
+var md=ok0?clean(cm.desc.replace(cm.plate,'').replace(/\d+\s*מקומות/,'')):'';
+rows.push({num:num||(ok0?'0':''),plate:pl,key:num?'n'+num:'r'+i,model:md||mdl,top:g.cy-gap/2,bot:g.cy+gap/2,bars:[]});
 });
 }
 var picked=[];
 Array.prototype.forEach.call(all,function(e){
-var r=e.getBoundingClientRect();if(r.width<10||r.height<8||r.height>70)return;if(r.left<xmin-3||r.right>xmax+3)return;
+var r=e.getBoundingClientRect();if(r.width<6||r.height<8||r.height>120)return;if(r.right<xmin+2||r.left>xmax-2||r.width>xmax-xmin+10)return;
 var t=clean(e.innerText||e.textContent);if(!t||/^[\d\s:]+$/.test(t))return;
 var bg=win.getComputedStyle(e).backgroundColor||'';var cn=bg.match(/[\d.]+/g);if(!cn||cn.length<3)return;if(cn.length>3&&Number(cn[3])<0.3)return;
 var c3=[Number(cn[0]),Number(cn[1]),Number(cn[2])];if(Math.max.apply(null,c3)-Math.min.apply(null,c3)<45)return;
@@ -463,7 +478,15 @@ if(picked.some(function(p){return p.contains(e);}))return;picked.push(e);
 var cy=(r.top+r.bottom)/2;var row=rows.filter(function(w){return cy>=w.top&&cy<=w.bot;})[0];if(!row)return;
 var ttl=e.getAttribute('title')||'';var te=e.querySelector('[title]');if(!ttl&&te)ttl=te.getAttribute('title')||'';
 var a=tOf(r.left),b=tOf(r.right);var s=Math.max(0,Math.min(a,b)),en=Math.min(24,Math.max(a,b));
-row.bars.push({s:s,e:en,t:clean(ttl).length>t.length?clean(ttl):t});
+var parts=ttl.split(/<br\s*\/?>|\n/i).map(clean).filter(String);
+var tm=ttl.match(/(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})/);
+var nm=parts.filter(function(x){return !/\d{1,2}:\d{2}/.test(x);}).join(' · ')||t;
+var sT='',eT='';
+if(tm){var A=Number(tm[1])+Number(tm[2])/60,B=Number(tm[3])+Number(tm[4])/60,At=p2(Number(tm[1]))+':'+tm[2],Bt=p2(Number(tm[3]))+':'+tm[4];
+if(Math.abs(A-s)+Math.abs(B-en)<=Math.abs(B-s)+Math.abs(A-en)){s=A;en=B;sT=At;eT=Bt;}else{s=B;en=A;sT=Bt;eT=At;}
+if(s>en){if(Math.min(a,b)<0.3){s=0;sT='00:00';}else{en=24;eT='24:00';}}}
+var ds=t.indexOf(nm)==0?clean(t.slice(nm.length)):'';if(/(…|\.\.\.)$/.test(ds))ds='';
+row.bars.push({s:s,e:en,sT:sT,eT:eT,t:nm,d:ds});
 });
 rows.forEach(function(w){w.bars.sort(function(x,y){return x.s-y.s;});});
 rows=rows.filter(function(w){return w.num||w.plate||w.bars.length;});
@@ -471,6 +494,20 @@ return {date:shownDate(doc),rows:rows};
 }
 function fmtT(x){var m=Math.round(x*12)*5;if(m>=1440)return '24:00';var h=Math.floor(m/60);return p2(h)+':'+p2(m-h*60);}
 function carLbl(w){return [w.num?'רכב '+w.num:'',w.model,w.plate].filter(String).join(' · ');}
+function carTitle(w){return w.num?'רכב '+w.num+(w.model?' - '+w.model:''):(w.model||w.plate||'רכב');}
+function carRank(x,qv){if(!qv)return 5;if(x.num==qv)return 0;if(x.num&&x.num.indexOf(qv)==0)return 1;if(carTitle(x).indexOf(qv)>=0)return 2;if((x.plate||'').indexOf(qv)>=0||(x.plate||'').replace(/-/g,'').indexOf(qv)>=0)return 3;return 9;}
+function bT(b){return (b.sT||fmtT(b.s))+' – '+(b.eT||fmtT(b.e));}
+function bookingCard(b,parent){
+var isToday=SCH.date==iso(new Date());var nw=new Date();var nh=nw.getHours()+nw.getMinutes()/60;
+var active=isToday&&b.s<=nh&&nh<b.e,past=isToday&&b.e<=nh;
+var c=el('div','c bk'+(active?' now':'')+(past?' past':''));
+var m=el('div','bkm');m.appendChild(el('div','bkt',bT(b)));m.appendChild(el('div','bkn',b.t));if(b.d)m.appendChild(el('div','bkd',b.d));c.appendChild(m);
+var sd=el('div','bks');
+if(active){sd.appendChild(el('div','ico','🚗'));sd.appendChild(el('div','lbl','עכשיו'));}
+else if(past)sd.appendChild(el('div','lbl2','הסתיים'));
+else if(isToday)sd.appendChild(el('div','lbl2','בהמשך'));
+c.appendChild(sd);parent.appendChild(c);
+}
 function scheduleView(){
 if(!SV.date)SV.date=iso(new Date());
 loading('טוען סידור…');
@@ -492,12 +529,20 @@ var c=el('div','c');
 c.appendChild(el('div','h','סידור רכבים'));
 if(!SCH){c.appendChild(el('div','msg','הסידור לא נטען.'));var a0=el('div','acts');a0.appendChild(btn('נסה שוב','on',scheduleView));a0.appendChild(btn('פתח את הסידור באתר',null,function(){location.href='/schedule.php';}));c.appendChild(a0);w.appendChild(c);return;}
 var curRow=SCH.rows.filter(function(x){return x.key==SV.car;})[0];
-var ci=el('input');ci.type='search';ci.placeholder='מספר רכב, מספר רישוי או דגם';ci.value=curRow?carLbl(curRow):'';
+var ci=el('input');ci.type='search';ci.placeholder='מספר רכב, דגם או מספר רישוי';ci.value=curRow?carTitle(curRow):'';
 var cl=el('div','clist');cl.style.display='none';
-function fillCars(qv){cl.innerHTML='';var it0=el('div','opt'+(!SV.car?' cur':''),'כל הרכבים');it0.onclick=function(){SV.car='';schDraw();};cl.appendChild(it0);SCH.rows.filter(function(x){return !qv||carLbl(x).indexOf(qv)>=0;}).forEach(function(x){var it=el('div','opt'+(x.key==SV.car?' cur':''),carLbl(x));it.onclick=function(){SV.car=x.key;schDraw();};cl.appendChild(it);});cl.style.display='block';}
-ci.onfocus=function(){fillCars('');};ci.oninput=function(){fillCars(ci.value.trim());};
-ci.onblur=function(){setTimeout(function(){cl.style.display='none';ci.value=curRow?carLbl(curRow):'';},250);};
-var r=el('div','r');r.style.marginBottom='0';r.appendChild(fld('רכב',ci));c.appendChild(r);c.appendChild(cl);
+function fillCars(qv){cl.innerHTML='';
+if(!qv){var it0=el('div','opt'+(!SV.car?' cur':''),'כל הרכבים');it0.onclick=function(){SV.car='';SV.res=null;schDraw();};cl.appendChild(it0);}
+var L=SCH.rows.map(function(x){return {x:x,k:carRank(x,qv)};}).filter(function(o){return o.k<9;});
+L.sort(function(a,b){return a.k-b.k||(Number(a.x.num)||0)-(Number(b.x.num)||0);});
+if(qv&&!L.length)cl.appendChild(el('div','opt lg','לא נמצא רכב'));
+L.forEach(function(o){var x=o.x;var it=el('div','opt'+(x.key==SV.car?' cur':''));it.appendChild(el('div','ot',carTitle(x)));if(x.plate)it.appendChild(el('div','os',x.plate));it.onclick=function(){SV.car=x.key;SV.res=null;schDraw();};cl.appendChild(it);});
+cl.style.display='block';}
+ci.onfocus=function(){fillCars('');try{ci.select();}catch(e){}};ci.oninput=function(){fillCars(ci.value.trim());};
+ci.onblur=function(){setTimeout(function(){cl.style.display='none';ci.value=curRow?carTitle(curRow):'';},250);};
+var r=el('div','r');r.style.marginBottom='0';r.appendChild(fld('רכב',ci));c.appendChild(r);
+if(curRow&&curRow.plate){var pl0=el('div','lg',curRow.plate);pl0.style.marginTop='4px';c.appendChild(pl0);}
+c.appendChild(cl);
 r=el('div','r');r.style.marginTop='12px';
 r.appendChild(fld('תאריך',dateIn(SV.date,function(v){SV.date=v;SV.res=null;schDraw();})));
 r.appendChild(fld('שעה (לא חובה)',sel([{v:'',t:'כל היום'}].concat(TO),SV.hour,function(v){SV.hour=v;SV.res=null;schDraw();})));
@@ -521,16 +566,15 @@ if(SV.hour){
 var hb=SV.hour.split(':'),t=Number(hb[0])+Number(hb[1])/60+0.001;
 var free=[];
 rows.forEach(function(x){var on=x.bars.filter(function(b){return b.s<=t&&t<b.e;});
-if(!on.length){if(SV.car){var c0=el('div','c');c0.appendChild(el('div','h',carLbl(x)));carBox(c0,null,'פנוי בשעה הזו');var nx=x.bars.filter(function(b){return b.s>t;})[0];var pv=x.bars.filter(function(b){return b.e<=t;}).pop();if(pv)c0.appendChild(el('div','msg','לפני: '+fmtT(pv.s)+'–'+fmtT(pv.e)+' · '+pv.t));if(nx)c0.appendChild(el('div','msg','אחרי: '+fmtT(nx.s)+'–'+fmtT(nx.e)+' · '+nx.t));w.appendChild(c0);}else free.push(x);return;}
-var c1=el('div','c');c1.appendChild(el('div','h',carLbl(x)));
-on.forEach(function(b){var kv=el('div','kv');kv.appendChild(el('span','k',fmtT(b.s)+'–'+fmtT(b.e)));kv.appendChild(el('span','v',b.t));c1.appendChild(kv);});
-w.appendChild(c1);});
-if(free.length){var cf=el('div','c');cf.appendChild(el('div','h','פנויים בשעה הזו ('+free.length+')'));var fc=el('div','ch');free.forEach(function(x){fc.appendChild(btn(carLbl(x),'n',function(){SV.car=x.key;SV.hour='';SV.res=renderSch;schDraw();}));});cf.appendChild(fc);w.appendChild(cf);}
+if(!on.length){if(SV.car){var c0=el('div','c');carBox(c0,null,'פנוי בשעה '+SV.hour);w.appendChild(c0);var pv=x.bars.filter(function(b){return b.e<=t;}).pop();var nx=x.bars.filter(function(b){return b.s>t;})[0];if(pv){w.appendChild(el('div','sub','לפני'));bookingCard(pv,w);}if(nx){w.appendChild(el('div','sub','אחרי'));bookingCard(nx,w);}}else free.push(x);return;}
+if(!SV.car)w.appendChild(el('div','gh',carTitle(x)));
+on.forEach(function(b){bookingCard(b,w);});});
+if(free.length){var cf=el('div','c');cf.appendChild(el('div','h','פנויים בשעה הזו ('+free.length+')'));var fc=el('div','ch');free.forEach(function(x){fc.appendChild(btn(carTitle(x),'n',function(){SV.car=x.key;SV.hour='';SV.res=renderSch;schDraw();}));});cf.appendChild(fc);w.appendChild(cf);}
 }else{
-rows.forEach(function(x){var c2=el('div','c');c2.appendChild(el('div','h',carLbl(x)));
-if(!x.bars.length)c2.appendChild(el('div','msg','אין שיבוצים ביום הזה'));
-x.bars.forEach(function(b){var kv=el('div','kv');kv.appendChild(el('span','k',fmtT(b.s)+'–'+fmtT(b.e)));kv.appendChild(el('span','v',b.t));c2.appendChild(kv);});
-w.appendChild(c2);});
+rows.forEach(function(x){
+if(!SV.car)w.appendChild(el('div','gh',carTitle(x)));
+if(!x.bars.length){var c2=el('div','c');c2.appendChild(el('div','ttl','אין שיבוצים ביום הזה'));w.appendChild(c2);}
+x.bars.forEach(function(b){bookingCard(b,w);});});
 }
 }
 function done(html,dn,when){
