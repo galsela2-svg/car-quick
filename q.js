@@ -81,6 +81,10 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx button.x{background:rgb(225,45,45)!important;color:white!important}'+
 '.qbx button.n{background:rgb(236,238,242)!important;color:rgb(70,78,90)!important}'+
 '.qbx .tog{cursor:pointer}'+
+'.qbx .clist{max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:white;border:1px solid rgb(226,230,236);border-radius:12px;margin:8px 0 0;box-shadow:0 6px 16px rgba(16,24,40,.08)}'+
+'.qbx .opt{padding:13px 14px;border-bottom:1px solid rgb(240,242,245);text-align:right;font-size:16px;cursor:pointer}'+
+'.qbx .opt:last-child{border-bottom:0}'+
+'.qbx .opt.cur{color:var(--a);font-weight:700}'+
 '.qbx .sw{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:14px 0}'+
 '.qbx button.swb{color:white!important;font-weight:700;padding:14px 18px!important;border-radius:14px!important}'+
 '.qbx button.swb.cur{box-shadow:0 0 0 3px white,0 0 0 5px rgb(28,32,38)!important}'+
@@ -243,9 +247,18 @@ if(F.length)c.appendChild(ch);
 var curT=(DEST.filter(function(x){return x.v==S.dest;})[0]||{}).t;
 var isF=!!curT&&F.indexOf(curT)>=0;
 r=el('div','r');r.style.marginBottom='0';
-r.appendChild(fld('',sel([{v:'',t:'בחר יעד…'}].concat(DEST),S.dest,function(v){S.dest=v;draw();})));
+var cb=el('div','f');
+var ci=el('input');ci.type='search';ci.placeholder='הקלד או בחר יעד…';ci.value=curT||'';
+var cl=el('div','clist');cl.style.display='none';
+function fillList(qv){cl.innerHTML='';var L=DEST.filter(function(x){return !qv||x.t.indexOf(qv)>=0;});if(!L.length)cl.appendChild(el('div','opt lg','לא נמצא יעד בשם הזה'));L.forEach(function(o){var it=el('div','opt'+(o.v==S.dest?' cur':''),o.t);it.onclick=function(){S.dest=o.v;draw();};cl.appendChild(it);});cl.style.display='block';}
+ci.onfocus=function(){fillList('');try{ci.select();}catch(e){}};
+ci.oninput=function(){fillList(ci.value.trim());};
+ci.onblur=function(){setTimeout(function(){cl.style.display='none';ci.value=curT||'';},250);};
+cb.appendChild(ci);
+r.appendChild(cb);
 r.appendChild(btn(isF?'★':'☆','star',function(){if(!curT)return;if(isF){F=F.filter(function(x){return x!=curT;});}else{F.push(curT);}sv('qbf',F);draw();}));
 c.appendChild(r);
+c.appendChild(cl);
 w.appendChild(c);
 if(GRPS.length){
 c=el('div','c');
