@@ -126,7 +126,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-3';
+var VER='22.10-4';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -408,18 +408,22 @@ function loadFrame(url){return new Promise(function(res,rej){var f=schFrame();va
 function shownDate(doc){var m=((doc&&doc.body&&doc.body.innerText)||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);if(!m)return null;var y=Number(m[3]);if(y<100)y+=2000;return y+'-'+p2(Number(m[2]))+'-'+p2(Number(m[1]));}
 function findClick(doc,re){var all=doc.querySelectorAll('a,button,input,li,span,div,td');for(var i=0;i<all.length;i++){var e=all[i];var t=clean(e.value||e.textContent);if(t.length<20&&re.test(t)&&!e.querySelector('a,button,input'))return e;}return null;}
 function waitDate(target,ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(doc&&doc.body&&shownDate(doc)==target)return setTimeout(function(){res(IFR.contentDocument);},500);if(Date.now()-t0>ms)return res(null);setTimeout(poll,300);})();});}
-function stepDay(dir){var doc=IFR.contentDocument;var cur=shownDate(doc);var b=findClick(doc,dir>0?/יום הבא/:/יום קודם/);if(!cur||!b)return Promise.reject('לא הצלחתי לעבור תאריך בסידור');var nt=mk(cur,'12:00');nt.setDate(nt.getDate()+dir);b.click();return waitDate(iso(nt),12000).then(function(x){if(!x)throw 'מעבר התאריך בסידור נכשל';return x;});}
+function stepDay(dir){var doc=IFR.contentDocument;var cur=shownDate(doc);var b=findClick(doc,dir>0?/יום הבא/:/יום קודם/);if(!cur||!b)return Promise.reject('לא הצלחתי לעבור תאריך בסידור');var nt=mk(cur,'12:00');nt.setDate(nt.getDate()+dir);b.click();return waitDate(iso(nt),12000).then(function(x){if(!x)throw 'מעבר התאריך בסידור נכשל';return waitRows(10000);});}
 function gotoDate(target){var cur=shownDate(IFR.contentDocument);if(!cur)return Promise.reject('לא זוהה תאריך בסידור');var diff=Math.round((mk(target,'12:00')-mk(cur,'12:00'))/86400000);if(Math.abs(diff)>31)return Promise.reject('אפשר לבחור עד חודש מהיום');var p=Promise.resolve();for(var i=0;i<Math.abs(diff);i++){p=p.then(function(){return stepDay(diff>0?1:-1);});}return p.then(function(){return IFR.contentDocument;});}
+function plateNodes(doc){var out=[];if(!doc||!doc.body)return out;var tw=doc.createTreeWalker(doc.body,4,null);var nd;while((nd=tw.nextNode())){var m=nd.nodeValue.match(/\d{2,3}-\d{2,3}-\d{2,3}/);if(m&&nd.parentNode)out.push({e:nd.parentNode,t:m[0]});}return out;}
+function waitRows(ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(plateNodes(doc).length>2||Date.now()-t0>ms)return setTimeout(function(){res(IFR.contentDocument);},300);setTimeout(poll,400);})();});}
+function diag(doc,extra){var b=(doc&&doc.body)||null;var tx=b?clean(b.innerText||b.textContent).slice(0,140):'';return '\n('+(extra||'')+' רישויים: '+plateNodes(doc).length+' · כתובת: '+(doc&&doc.location?doc.location.pathname:'?')+' · טקסט: '+tx+')';}
 function parseSchedule(doc){
 var win=doc.defaultView,H={},all=doc.body.getElementsByTagName('*');
 Array.prototype.forEach.call(all,function(e){if(e.children.length)return;var t=clean(e.textContent);if(!/^\d{1,2}$/.test(t))return;var h=Number(t);if(h>23)return;var r=e.getBoundingClientRect();if(r.width<3||r.height<3)return;if(!H[h]||r.top<H[h].top)H[h]={top:r.top,c:(r.left+r.right)/2};});
-var hs=Object.keys(H).map(Number);if(hs.length<6)throw 'לא זוהו שעות בסידור';
+var hs=Object.keys(H).map(Number);if(hs.length<6)throw 'לא זוהו שעות בסידור'+diag(doc,'שעות: '+hs.length+' ·');
 var n=hs.length,sx=0,sy=0,sxx=0,sxy=0;hs.forEach(function(h){var y=H[h].c;sx+=h;sy+=y;sxx+=h*h;sxy+=h*y;});
 var qq=(n*sxy-sx*sy)/(n*sxx-sx*sx),pp=(sy-qq*sx)/n;
 function tOf(x){return (x-pp+qq/2)/qq;}
 var xa=pp-qq/2,xb=pp-qq/2+24*qq,xmin=Math.min(xa,xb),xmax=Math.max(xa,xb);
 var rows=[];
-Array.prototype.forEach.call(all,function(e){if(e.children.length)return;var t=clean(e.textContent);if(!/^\d{2,3}-\d{2,3}-\d{2,3}$/.test(t))return;
+var seenP={};
+plateNodes(doc).forEach(function(pn){var e=pn.e,t=pn.t;if(seenP[t])return;var er0=e.getBoundingClientRect();if(er0.left<xmax-2&&er0.right>xmin+2&&er0.left>xmin-2)return;seenP[t]=1;
 var tr=e.closest('tr');var rr=(tr||e).getBoundingClientRect();if(rr.height>80){var er=e.getBoundingClientRect();rr={top:er.top-10,bottom:er.bottom+10};}
 var info=[];if(tr)Array.prototype.forEach.call(tr.children,function(td){var r=td.getBoundingClientRect();if(r.left>=xmax-2||r.right<=xmin+2){var x=clean(td.textContent);if(x)info.push(x);}});
 var num=info.filter(function(x){return /^\d{1,4}$/.test(x);})[0]||'';
@@ -445,7 +449,7 @@ function carLbl(w){return (w.num?w.num+' · ':'')+w.plate+(w.model?' · '+w.mode
 function scheduleView(){
 if(!SV.date)SV.date=iso(new Date());
 loading('טוען סידור…');
-withLogin('/schedule.php').then(function(){return loadFrame('/schedule.php');}).then(function(doc){SCH=parseSchedule(doc);if(!SCH.rows.length)throw 'לא הצלחתי לקרוא את רשימת הרכבים בסידור';schDraw();})
+withLogin('/schedule.php').then(function(){return loadFrame('/schedule.php');}).then(function(){return waitRows(15000);}).then(function(doc){SCH=parseSchedule(doc);if(!SCH.rows.length)throw 'לא הצלחתי לקרוא את רשימת הרכבים בסידור'+diag(doc,'');schDraw();})
 .catch(function(e){SCH=null;say(String(e)).then(function(){schDraw();});});
 }
 function schDraw(){
