@@ -126,7 +126,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-7';
+var VER='22.10-8';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -418,12 +418,12 @@ Array.prototype.forEach.call(doc.querySelectorAll('input'),function(e){var p=pla
 return out;}
 function digitSample(doc){var out=[];if(!doc||!doc.body)return '';var tw=doc.createTreeWalker(doc.body,4,null);var nd;while((nd=tw.nextNode())&&out.length<3){var v=nd.nodeValue;if(/\d{3}/.test(v)&&!/\d{1,2}\/\d{1,2}/.test(v)){out.push(v.trim().slice(0,24)+' ['+v.trim().slice(0,12).split('').map(function(ch){return /\d/.test(ch)?'':ch.charCodeAt(0).toString(16);}).filter(String).join(',')+']');}}return out.join(' | ');}
 function resList(doc){try{return doc.defaultView.performance.getEntriesByType('resource').filter(function(x){return /xmlhttprequest|fetch|iframe/.test(x.initiatorType)||/\.php/.test(x.name);}).map(function(x){return x.name.replace(/^https?:\/\/[^\/]+/,'');}).slice(0,6).join(' , ');}catch(e){return '?';}}
-function waitRows(ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(plateNodes(doc).length>2||Date.now()-t0>ms)return setTimeout(function(){res(IFR.contentDocument);},300);setTimeout(poll,400);})();});}
+function waitRows(ms){return new Promise(function(res){var t0=Date.now(),last=-1,same=0;(function poll(){var doc=IFR.contentDocument;var n=(doc&&doc.body)?doc.getElementsByTagName('div').length:0;if(n==last&&n>200)same++;else same=0;last=n;if(same>=3||plateNodes(doc).length>2||Date.now()-t0>ms)return setTimeout(function(){res(IFR.contentDocument);},200);setTimeout(poll,350);})();});}
 function diag(doc,extra){var b=(doc&&doc.body)||null;var tx=b?clean(b.innerText||b.textContent).slice(0,140):'';var q0=function(s){try{return doc.querySelectorAll(s).length;}catch(e){return '?';}};
 return '\n('+(extra||'')+' רישויים: '+plateNodes(doc).length+' · iframe: '+q0('iframe')+' · canvas: '+q0('canvas')+' · svg: '+q0('svg')+' · tr: '+q0('tr')+' · div: '+q0('div')+' · בקשות: '+resList(doc)+' · דוגמה: '+digitSample(doc)+' · המשך טקסט: '+(b?clean(b.innerText||b.textContent).slice(140,320):'')+')';}
 function parseSchedule(doc){
 var win=doc.defaultView,H={},all=doc.body.getElementsByTagName('*');
-Array.prototype.forEach.call(all,function(e){if(e.children.length)return;var t=clean(e.textContent);if(!/^\d{1,2}$/.test(t))return;var h=Number(t);if(h>23)return;var r=e.getBoundingClientRect();if(r.width<3||r.height<3)return;if(!H[h]||r.top<H[h].top)H[h]={top:r.top,c:(r.left+r.right)/2};});
+Array.prototype.forEach.call(all,function(e){if(e.children.length)return;var t=clean(e.textContent);if(!/^\d{1,2}$/.test(t))return;var h=Number(t);if(h>23)return;var r=e.getBoundingClientRect();if(r.width<3||r.height<3)return;if(!H[h]||r.top<H[h].top)H[h]={top:r.top,bot:r.bottom,c:(r.left+r.right)/2};});
 var hs=Object.keys(H).map(Number);if(hs.length<6)throw 'לא זוהו שעות בסידור'+diag(doc,'שעות: '+hs.length+' ·');
 var n=hs.length,sx=0,sy=0,sxx=0,sxy=0;hs.forEach(function(h){var y=H[h].c;sx+=h;sy+=y;sxx+=h*h;sxy+=h*y;});
 var qq=(n*sxy-sx*sy)/(n*sxx-sx*sx),pp=(sy-qq*sx)/n;
@@ -436,7 +436,23 @@ var tr=e.closest('tr');var rr=(tr||e).getBoundingClientRect();if(rr.height>80){v
 var info=[];if(tr)Array.prototype.forEach.call(tr.children,function(td){var r=td.getBoundingClientRect();if(r.left>=xmax-2||r.right<=xmin+2){var x=clean(td.textContent);if(x)info.push(x);}});
 var num=info.filter(function(x){return /^\d{1,4}$/.test(x);})[0]||'';
 var model=info.length?info[info.length-1]:'';if(model==t||model==num)model='';
-rows.push({num:num,plate:t,model:model,top:rr.top,bot:rr.bottom,bars:[]});});
+rows.push({num:num,plate:t,key:t,model:model,top:rr.top,bot:rr.bottom,bars:[]});});
+if(!rows.length){
+var CMAP={};CARS.forEach(function(c){var m=c.t.match(/^(\d+)\s+(.*)$/);if(m)CMAP[m[1]]={plate:plateOf(m[2])||'',desc:m[2]};});
+var minTop=Math.min.apply(null,hs.map(function(h){return H[h].top;}));var hdrBot=minTop;hs.forEach(function(h){if(H[h].top<minTop+6&&H[h].bot>hdrBot)hdrBot=H[h].bot;});
+var items=[];
+Array.prototype.forEach.call(all,function(e){if(e.children.length)return;var t=clean(e.textContent);if(!t||t.length>40)return;var r=e.getBoundingClientRect();if(r.width<2||r.height<6)return;if(!(r.left>=xmax-2||r.right<=xmin+2))return;var cy=(r.top+r.bottom)/2;if(cy<=hdrBot+2)return;items.push({t:t,cy:cy});});
+items.sort(function(a,b){return a.cy-b.cy;});
+var groups=[];items.forEach(function(it){var g=groups[groups.length-1];if(g&&Math.abs(it.cy-g.cy)<10)g.items.push(it);else groups.push({cy:it.cy,items:[it]});});
+var gaps=[];for(var gi=1;gi<groups.length;gi++)gaps.push(groups[gi].cy-groups[gi-1].cy);gaps.sort(function(a,b){return a-b;});var gap=gaps.length?gaps[Math.floor(gaps.length/2)]:40;
+groups.forEach(function(g,i){
+var num=(g.items.filter(function(x){return /^\d{1,4}$/.test(x.t);})[0]||{}).t||'';
+var mdl=(g.items.filter(function(x){return !/^\d+$/.test(x.t)&&!/[\/:]/.test(x.t);})[0]||{}).t||'';
+if(!num&&!mdl)return;
+var cm=CMAP[num||'0'];var pl=cm&&(num||(mdl&&cm.desc.indexOf(mdl)>=0))?cm.plate:'';
+rows.push({num:num,plate:pl,key:num?'n'+num:'r'+i,model:mdl,top:g.cy-gap/2,bot:g.cy+gap/2,bars:[]});
+});
+}
 var picked=[];
 Array.prototype.forEach.call(all,function(e){
 var r=e.getBoundingClientRect();if(r.width<10||r.height<8||r.height>70)return;if(r.left<xmin-3||r.right>xmax+3)return;
@@ -450,10 +466,11 @@ var a=tOf(r.left),b=tOf(r.right);var s=Math.max(0,Math.min(a,b)),en=Math.min(24,
 row.bars.push({s:s,e:en,t:clean(ttl).length>t.length?clean(ttl):t});
 });
 rows.forEach(function(w){w.bars.sort(function(x,y){return x.s-y.s;});});
+rows=rows.filter(function(w){return w.num||w.plate||w.bars.length;});
 return {date:shownDate(doc),rows:rows};
 }
 function fmtT(x){var m=Math.round(x*12)*5;if(m>=1440)return '24:00';var h=Math.floor(m/60);return p2(h)+':'+p2(m-h*60);}
-function carLbl(w){return (w.num?w.num+' · ':'')+w.plate+(w.model?' · '+w.model:'');}
+function carLbl(w){return [w.num?'רכב '+w.num:'',w.model,w.plate].filter(String).join(' · ');}
 function scheduleView(){
 if(!SV.date)SV.date=iso(new Date());
 loading('טוען סידור…');
@@ -474,10 +491,10 @@ var w=shell();
 var c=el('div','c');
 c.appendChild(el('div','h','סידור רכבים'));
 if(!SCH){c.appendChild(el('div','msg','הסידור לא נטען.'));var a0=el('div','acts');a0.appendChild(btn('נסה שוב','on',scheduleView));a0.appendChild(btn('פתח את הסידור באתר',null,function(){location.href='/schedule.php';}));c.appendChild(a0);w.appendChild(c);return;}
-var curRow=SCH.rows.filter(function(x){return x.plate==SV.car;})[0];
+var curRow=SCH.rows.filter(function(x){return x.key==SV.car;})[0];
 var ci=el('input');ci.type='search';ci.placeholder='מספר רכב, מספר רישוי או דגם';ci.value=curRow?carLbl(curRow):'';
 var cl=el('div','clist');cl.style.display='none';
-function fillCars(qv){cl.innerHTML='';var it0=el('div','opt'+(!SV.car?' cur':''),'כל הרכבים');it0.onclick=function(){SV.car='';schDraw();};cl.appendChild(it0);SCH.rows.filter(function(x){return !qv||carLbl(x).indexOf(qv)>=0;}).forEach(function(x){var it=el('div','opt'+(x.plate==SV.car?' cur':''),carLbl(x));it.onclick=function(){SV.car=x.plate;schDraw();};cl.appendChild(it);});cl.style.display='block';}
+function fillCars(qv){cl.innerHTML='';var it0=el('div','opt'+(!SV.car?' cur':''),'כל הרכבים');it0.onclick=function(){SV.car='';schDraw();};cl.appendChild(it0);SCH.rows.filter(function(x){return !qv||carLbl(x).indexOf(qv)>=0;}).forEach(function(x){var it=el('div','opt'+(x.key==SV.car?' cur':''),carLbl(x));it.onclick=function(){SV.car=x.key;schDraw();};cl.appendChild(it);});cl.style.display='block';}
 ci.onfocus=function(){fillCars('');};ci.oninput=function(){fillCars(ci.value.trim());};
 ci.onblur=function(){setTimeout(function(){cl.style.display='none';ci.value=curRow?carLbl(curRow):'';},250);};
 var r=el('div','r');r.style.marginBottom='0';r.appendChild(fld('רכב',ci));c.appendChild(r);c.appendChild(cl);
@@ -498,7 +515,7 @@ var p=SCH.date==SV.date?Promise.resolve(null):gotoDate(SV.date).then(function(do
 p.then(function(){SV.busy=false;SV.res=renderSch;schDraw();}).catch(function(e){SV.busy=false;schDraw();say(String(e));});
 }
 function renderSch(w){
-var rows=SCH.rows.filter(function(x){return !SV.car||x.plate==SV.car;});
+var rows=SCH.rows.filter(function(x){return !SV.car||x.key==SV.car;});
 var hdr=el('div','sub','סידור ליום '+sh(SCH.date)+(SV.hour?' בשעה '+SV.hour:''));w.appendChild(hdr);
 if(SV.hour){
 var hb=SV.hour.split(':'),t=Number(hb[0])+Number(hb[1])/60+0.001;
@@ -508,7 +525,7 @@ if(!on.length){if(SV.car){var c0=el('div','c');c0.appendChild(el('div','h',carLb
 var c1=el('div','c');c1.appendChild(el('div','h',carLbl(x)));
 on.forEach(function(b){var kv=el('div','kv');kv.appendChild(el('span','k',fmtT(b.s)+'–'+fmtT(b.e)));kv.appendChild(el('span','v',b.t));c1.appendChild(kv);});
 w.appendChild(c1);});
-if(free.length){var cf=el('div','c');cf.appendChild(el('div','h','פנויים בשעה הזו ('+free.length+')'));var fc=el('div','ch');free.forEach(function(x){fc.appendChild(btn(carLbl(x),'n',function(){SV.car=x.plate;SV.hour='';SV.res=renderSch;schDraw();}));});cf.appendChild(fc);w.appendChild(cf);}
+if(free.length){var cf=el('div','c');cf.appendChild(el('div','h','פנויים בשעה הזו ('+free.length+')'));var fc=el('div','ch');free.forEach(function(x){fc.appendChild(btn(carLbl(x),'n',function(){SV.car=x.key;SV.hour='';SV.res=renderSch;schDraw();}));});cf.appendChild(fc);w.appendChild(cf);}
 }else{
 rows.forEach(function(x){var c2=el('div','c');c2.appendChild(el('div','h',carLbl(x)));
 if(!x.bars.length)c2.appendChild(el('div','msg','אין שיבוצים ביום הזה'));
