@@ -150,7 +150,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-21';
+var VER='22.10-22';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -505,8 +505,8 @@ var a=tOf(r.left),b=tOf(r.right);var s=Math.max(0,Math.min(a,b)),en=Math.min(24,
 var parts=ttl.split(/<br\s*\/?>|\n/i).map(clean).filter(String);
 var nm=parts.filter(function(x){return !/\d{1,2}:\d{2}/.test(x);}).join(' · ')||t;
 var gs=s,ge=en,sT='',eT='',skip=false,sDay='',eDay='';
-var tre=/(?:(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\s*)?(\d{1,2}):(\d{2})/g,mt,TM=[];
-while((mt=tre.exec(ttl))&&TM.length<4)TM.push(mt);
+var tre=/(?:(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?\s+)?(\d{1,2}):(\d{2})(?:\s+(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?)?/g,mt,TM=[];
+while((mt=tre.exec(ttl))&&TM.length<4){if(!mt[1]&&mt[6]){mt[1]=mt[6];mt[2]=mt[7];mt[3]=mt[8];}TM.push(mt);}
 if(TM.length>=2&&day0){
 var A=TM[0],B=TM[1];
 var dOf=function(x){if(!x[1])return null;var y=x[3]?Number(x[3]):day0.getFullYear();if(y<100)y+=2000;return new Date(y,Number(x[2])-1,Number(x[1]));};
@@ -520,7 +520,8 @@ eOpts.forEach(function(ed){var E0=at(ed,Y);if(E0<=S0||E0-S0>7*86400000)return;
 var rs=(S0-day0)/3600000,re2=(E0-day0)/3600000;var cs=Math.max(0,Math.min(24,rs)),ce=Math.max(0,Math.min(24,re2));
 var sc=Math.abs(cs-gs)+Math.abs(ce-ge)+((re2<=0||rs>=24)?50:0)+(E0-S0)/3600000/1000;
 if(!best||sc<best.sc)best={sc:sc,S:S0,E:E0,rs:rs,re:re2};});});});
-if(best&&best.sc<6){
+if(best&&best.sc>=50&&(A[1]||B[1])){skip=true;s=0;en=0;sT=hm(best.S);eT=hm(best.E);sDay=iso(best.S);eDay=iso(best.E);}
+else if(best&&best.sc<6){
 if(best.re<=0||best.rs>=24)skip=true;
 s=Math.max(0,best.rs);en=Math.min(24,best.re);sT=hm(best.S);eT=hm(best.E);
 if(iso(best.S)!=iso(day0)||iso(best.E)!=iso(day0)){sDay=iso(best.S);eDay=iso(best.E);}
@@ -531,10 +532,11 @@ var bo={s:s,e:en,sT:sT,eT:eT,sDay:sDay,eDay:eDay,t:nm,d:ds,raw:clean(ttl.replace
 row.other=row.other||[];
 if(skip)row.other.push(bo);else if(en-s>0.02)row.bars.push(bo);
 });
-rows.forEach(function(w){w.bars.sort(function(x,y){return x.s-y.s;});});
+rows.forEach(function(w){w.bars.sort(function(x,y){return x.s-y.s;});markOv(w.bars);});
 rows=rows.filter(function(w){return w.num||w.plate||w.bars.length;});
 return {date:shownDate(doc),rows:rows};
 }
+function markOv(bars){bars.forEach(function(b){b.ov=false;});for(var i=0;i<bars.length;i++)for(var j=i+1;j<bars.length;j++){if(bars[j].s<bars[i].e-0.02&&bars[i].s<bars[j].e-0.02){bars[i].ov=true;bars[j].ov=true;}}}
 function fmtT(x){var m=Math.round(x*12)*5;if(m>=1440)return '24:00';var h=Math.floor(m/60);return p2(h)+':'+p2(m-h*60);}
 function carLbl(w){return [w.num?'רכב '+w.num:'',w.model,w.plate].filter(String).join(' · ');}
 function carTitle(w){return w.num?'רכב '+w.num+(w.model?' - '+w.model:''):(w.model||w.plate||'רכב');}
@@ -552,7 +554,7 @@ o.rows.forEach(function(r2){var row=base.rows.filter(function(w){return w.key==r
 r2.bars.concat(r2.other||[]).forEach(function(b){if(!(b.sDay&&b.eDay&&b.sDay<=X&&b.eDay>=X))return;
 if(row.bars.some(function(x){return x.t==b.t&&x.sT==b.sT&&(x.sDay||X)==b.sDay;}))return;
 var nb={};for(var k in b)nb[k]=b[k];nb.s=b.sDay<X?0:hrs(b.sT);nb.e=b.eDay>X?24:hrs(b.eT);row.bars.push(nb);});
-row.bars.sort(function(x,y){return x.s-y.s;});});
+row.bars.sort(function(x,y){return x.s-y.s;});markOv(row.bars);});
 }
 function addD(x,n){var t=mk(x,'12:00');t.setDate(t.getDate()+n);return iso(t);}
 function mergeAdj(){
@@ -572,6 +574,7 @@ var c=el('div','c bk'+(active?' now':'')+(past?' past':'')+(b.gap?' gap':''));
 var m=el('div','bkm');m.appendChild(timeRow(b.sT||fmtT(b.s),b.eT||fmtT(b.e),b.sDay&&b.sDay!=SCH.date?b.sDay:'',b.eDay&&b.eDay!=SCH.date?b.eDay:''));m.appendChild(el('div','bkn',b.t));if(b.d)m.appendChild(el('div','bkd',b.d));c.appendChild(m);
 if(b.gap&&active){var sg=el('div','bks');sg.appendChild(el('div','lbl2','פנוי עכשיו'));c.appendChild(sg);parent.appendChild(c);return;}
 if(b.gap){parent.appendChild(c);return;}
+if(b.ov)m.appendChild(el('div','warn','⚠️ חופף להזמנה אחרת לפי נתוני האתר'));
 if(b.raw){var rw=el('div','raw','מקור: '+b.raw);rw.style.display='none';m.appendChild(rw);c.onclick=function(){rw.style.display=rw.style.display=='none'?'block':'none';};}
 var sd=el('div','bks');
 if(active){sd.appendChild(el('div','ico','🚗'));sd.appendChild(el('div','lbl','עכשיו'));}
