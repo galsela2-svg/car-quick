@@ -148,7 +148,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-14';
+var VER='22.10-15';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -584,7 +584,12 @@ drag(shr,function(n){if(!SV.hour){var nq=new Date();nq.setMinutes(Math.floor(nq.
 r.appendChild(fld('תאריך ↕',sdt));
 r.appendChild(fld('שעה ↕ (לא חובה)',shr));
 c.appendChild(r);
-var a=el('div','acts');a.appendChild(btn(SV.busy?'טוען…':'הצג','on',showSch));c.appendChild(a);
+var shiftDay=function(n){if(SV.busy)return;var t=mk(SV.date,'12:00');t.setDate(t.getDate()+n);SV.date=iso(t);auto();};
+var a=el('div','acts');a.style.marginTop='12px';
+a.appendChild(btn('‹ יום לפני',null,function(){shiftDay(-1);}));
+a.appendChild(btn(SV.busy?'טוען…':'הצג','on',showSch));
+a.appendChild(btn('יום אחרי ›',null,function(){shiftDay(1);}));
+c.appendChild(a);
 w.appendChild(c);
 if(SV.res)SV.res(w);
 var a2=el('div','acts');a2.appendChild(btn('חזרה להזמנה',null,back));a2.appendChild(btn('הסידור המקורי',null,function(){location.href='/schedule.php';}));w.appendChild(a2);
