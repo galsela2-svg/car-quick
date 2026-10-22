@@ -126,7 +126,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-6';
+var VER='22.10-7';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -420,7 +420,7 @@ function digitSample(doc){var out=[];if(!doc||!doc.body)return '';var tw=doc.cre
 function resList(doc){try{return doc.defaultView.performance.getEntriesByType('resource').filter(function(x){return /xmlhttprequest|fetch|iframe/.test(x.initiatorType)||/\.php/.test(x.name);}).map(function(x){return x.name.replace(/^https?:\/\/[^\/]+/,'');}).slice(0,6).join(' , ');}catch(e){return '?';}}
 function waitRows(ms){return new Promise(function(res){var t0=Date.now();(function poll(){var doc=IFR.contentDocument;if(plateNodes(doc).length>2||Date.now()-t0>ms)return setTimeout(function(){res(IFR.contentDocument);},300);setTimeout(poll,400);})();});}
 function diag(doc,extra){var b=(doc&&doc.body)||null;var tx=b?clean(b.innerText||b.textContent).slice(0,140):'';var q0=function(s){try{return doc.querySelectorAll(s).length;}catch(e){return '?';}};
-return '\n('+(extra||'')+' רישויים: '+plateNodes(doc).length+' · iframe: '+q0('iframe')+' · canvas: '+q0('canvas')+' · svg: '+q0('svg')+' · tr: '+q0('tr')+' · div: '+q0('div')+' · בקשות: '+resList(doc)+' · דוגמה: '+digitSample(doc)+')';}
+return '\n('+(extra||'')+' רישויים: '+plateNodes(doc).length+' · iframe: '+q0('iframe')+' · canvas: '+q0('canvas')+' · svg: '+q0('svg')+' · tr: '+q0('tr')+' · div: '+q0('div')+' · בקשות: '+resList(doc)+' · דוגמה: '+digitSample(doc)+' · המשך טקסט: '+(b?clean(b.innerText||b.textContent).slice(140,320):'')+')';}
 function parseSchedule(doc){
 var win=doc.defaultView,H={},all=doc.body.getElementsByTagName('*');
 Array.prototype.forEach.call(all,function(e){if(e.children.length)return;var t=clean(e.textContent);if(!/^\d{1,2}$/.test(t))return;var h=Number(t);if(h>23)return;var r=e.getBoundingClientRect();if(r.width<3||r.height<3)return;if(!H[h]||r.top<H[h].top)H[h]={top:r.top,c:(r.left+r.right)/2};});
@@ -458,7 +458,16 @@ function scheduleView(){
 if(!SV.date)SV.date=iso(new Date());
 loading('טוען סידור…');
 withLogin('/schedule.php').then(function(){return loadFrame('/schedule.php');}).then(function(){return waitRows(15000);}).then(function(doc){SCH=parseSchedule(doc);if(!SCH.rows.length)throw 'לא הצלחתי לקרוא את רשימת הרכבים בסידור'+diag(doc,'');schDraw();})
-.catch(function(e){SCH=null;say(String(e)).then(function(){schDraw();});});
+.catch(function(e){SCH=null;ask('',String(e),null,'סגור','הצג את הדף שנטען').then(function(ok){schDraw();if(ok===null)showFrame();});});
+}
+function showFrame(){
+if(!IFR)return;
+var prev=IFR.style.cssText;
+IFR.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;border:0;opacity:1;z-index:2147483647;background:white';
+var x=d.createElement('button');x.textContent='✕ סגור תצוגה';
+x.style.cssText='position:fixed;bottom:24px;left:20px;right:20px;z-index:2147483647;background:black;color:white;border:0;border-radius:999px;padding:14px 22px;font-size:17px';
+x.onclick=function(){IFR.style.cssText=prev;x.remove();};
+d.body.appendChild(x);
 }
 function schDraw(){
 var w=shell();
