@@ -86,7 +86,14 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .gh{font-weight:800;font-size:15px;margin:16px 4px 8px;text-align:right}'+
 '.qbx .bk{display:flex;align-items:center;gap:12px;padding:14px 16px}'+
 '.qbx .bkm{flex:1 1 0;min-width:0}'+
-'.qbx .bkt{direction:ltr;unicode-bidi:isolate;text-align:right;font-size:20px;font-weight:800;color:var(--a);padding:0 0 8px;margin:0 0 8px;border-bottom:1px solid rgb(232,235,240)}'+
+'.qbx .bkt{display:flex;direction:ltr;align-items:center;gap:10px;padding:0 0 8px;margin:0 0 8px;border-bottom:1px solid rgb(232,235,240)}'+
+'.qbx .tv{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}'+
+'.qbx .tv b{font-size:20px;font-weight:800;color:var(--a);line-height:1.1}'+
+'.qbx .tv small{font-size:11px;color:rgb(130,138,150)}'+
+'.qbx .ar{flex:1 1 0;height:2px;background:rgb(225,229,235);border-radius:2px}'+
+'.qbx .bk.gap{background:rgb(237,239,242);box-shadow:none!important;padding:10px 16px}'+
+'.qbx .bk.gap .tv b{color:rgb(140,148,160);font-size:16px}'+
+'.qbx .bk.gap .bkn{color:rgb(140,148,160);font-weight:600;font-size:15px}'+
 '.qbx .bkn{font-size:17px;font-weight:700;text-align:right}'+
 '.qbx .bkd{font-size:13px;color:rgb(110,118,130);margin-top:2px;text-align:right}'+
 '.qbx .bks{flex:0 0 auto;min-width:58px;text-align:center}'+
@@ -140,7 +147,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-9';
+var VER='22.10-10';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -497,11 +504,15 @@ function carLbl(w){return [w.num?'רכב '+w.num:'',w.model,w.plate].filter(Stri
 function carTitle(w){return w.num?'רכב '+w.num+(w.model?' - '+w.model:''):(w.model||w.plate||'רכב');}
 function carRank(x,qv){if(!qv)return 5;if(x.num==qv)return 0;if(x.num&&x.num.indexOf(qv)==0)return 1;if(carTitle(x).indexOf(qv)>=0)return 2;if((x.plate||'').indexOf(qv)>=0||(x.plate||'').replace(/-/g,'').indexOf(qv)>=0)return 3;return 9;}
 function bT(b){return (b.sT||fmtT(b.s))+' – '+(b.eT||fmtT(b.e));}
+function timeRow(s,e){var r=el('div','bkt');var a=el('div','tv');a.appendChild(el('b',null,s));a.appendChild(el('small',null,'התחלה'));var z=el('div','tv');z.appendChild(el('b',null,e));z.appendChild(el('small',null,'סיום'));r.appendChild(a);r.appendChild(el('div','ar'));r.appendChild(z);return r;}
+function withGaps(bars){var out=[];bars.forEach(function(b,i){out.push(b);var nx=bars[i+1];if(nx&&nx.s-b.e>=5/60)out.push({gap:true,s:b.e,e:nx.s,sT:b.eT,eT:nx.sT,t:'לא מוזמן'});});return out;}
 function bookingCard(b,parent){
 var isToday=SCH.date==iso(new Date());var nw=new Date();var nh=nw.getHours()+nw.getMinutes()/60;
 var active=isToday&&b.s<=nh&&nh<b.e,past=isToday&&b.e<=nh;
-var c=el('div','c bk'+(active?' now':'')+(past?' past':''));
-var m=el('div','bkm');m.appendChild(el('div','bkt',bT(b)));m.appendChild(el('div','bkn',b.t));if(b.d)m.appendChild(el('div','bkd',b.d));c.appendChild(m);
+var c=el('div','c bk'+(active?' now':'')+(past?' past':'')+(b.gap?' gap':''));
+var m=el('div','bkm');m.appendChild(timeRow(b.sT||fmtT(b.s),b.eT||fmtT(b.e)));m.appendChild(el('div','bkn',b.t));if(b.d)m.appendChild(el('div','bkd',b.d));c.appendChild(m);
+if(b.gap&&active){var sg=el('div','bks');sg.appendChild(el('div','lbl2','פנוי עכשיו'));c.appendChild(sg);parent.appendChild(c);return;}
+if(b.gap){parent.appendChild(c);return;}
 var sd=el('div','bks');
 if(active){sd.appendChild(el('div','ico','🚗'));sd.appendChild(el('div','lbl','עכשיו'));}
 else if(past)sd.appendChild(el('div','lbl2','הסתיים'));
@@ -574,7 +585,7 @@ if(free.length){var cf=el('div','c');cf.appendChild(el('div','h','פנויים �
 rows.forEach(function(x){
 if(!SV.car)w.appendChild(el('div','gh',carTitle(x)));
 if(!x.bars.length){var c2=el('div','c');c2.appendChild(el('div','ttl','אין שיבוצים ביום הזה'));w.appendChild(c2);}
-x.bars.forEach(function(b){bookingCard(b,w);});});
+withGaps(x.bars).forEach(function(b){bookingCard(b,w);});});
 }
 }
 function done(html,dn,when){
