@@ -86,7 +86,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .gh{font-weight:800;font-size:15px;margin:16px 4px 8px;text-align:right}'+
 '.qbx .bk{display:flex;align-items:center;gap:12px;padding:14px 16px}'+
 '.qbx .bkm{flex:1 1 0;min-width:0}'+
-'.qbx .bkt{display:flex;direction:ltr;align-items:center;gap:10px;padding:0 0 8px;margin:0 0 8px;border-bottom:1px solid rgb(232,235,240)}'+
+'.qbx .bkt{display:flex;direction:rtl;align-items:center;gap:10px;padding:0 0 8px;margin:0 0 8px;border-bottom:1px solid rgb(232,235,240)}'+
 '.qbx .tv{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}'+
 '.qbx .tv b{font-size:20px;font-weight:800;color:var(--a);line-height:1.1}'+
 '.qbx .tv small{font-size:11px;color:rgb(130,138,150)}'+
@@ -150,7 +150,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-19';
+var VER='22.10-20';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -522,7 +522,9 @@ if(Math.abs(Ah-gs)+Math.abs(Bh-ge)<=Math.abs(Bh-gs)+Math.abs(Ah-ge)){s1=Ah;e1=Bh
 if(Math.abs(s1-gs)<1.5&&Math.abs(e1-ge)<1.5&&s1<e1){s=s1;en=e1;sT=s1T;eT=e1T;}
 }}
 var ds=t.indexOf(nm)==0?clean(t.slice(nm.length)):'';if(/(…|\.\.\.)$/.test(ds))ds='';
-if(!skip&&en-s>0.02)row.bars.push({s:s,e:en,sT:sT,eT:eT,sDay:sDay,eDay:eDay,t:nm,d:ds,raw:clean(ttl.replace(/<br\s*\/?>/gi,' | '))+(t&&t!=nm?' || '+t:'')});
+var bo={s:s,e:en,sT:sT,eT:eT,sDay:sDay,eDay:eDay,t:nm,d:ds,raw:clean(ttl.replace(/<br\s*\/?>/gi,' | '))+(t&&t!=nm?' || '+t:'')};
+row.other=row.other||[];
+if(skip)row.other.push(bo);else if(en-s>0.02)row.bars.push(bo);
 });
 rows.forEach(function(w){w.bars.sort(function(x,y){return x.s-y.s;});});
 rows=rows.filter(function(w){return w.num||w.plate||w.bars.length;});
@@ -534,12 +536,15 @@ function carTitle(w){return w.num?'רכב '+w.num+(w.model?' - '+w.model:''):(w.
 function carRank(x,qv){if(!qv)return 5;if(x.num==qv)return 0;if(x.num&&x.num.indexOf(qv)==0)return 1;if(carTitle(x).indexOf(qv)>=0)return 2;if((x.plate||'').indexOf(qv)>=0||(x.plate||'').replace(/-/g,'').indexOf(qv)>=0)return 3;return 9;}
 function bT(b){return (b.sT||fmtT(b.s))+' – '+(b.eT||fmtT(b.e));}
 function dmy(x){var a=x.split('-');return a[2]+'/'+a[1];}
-function timeRow(s,e,sd,ed){var r=el('div','bkt');var a=el('div','tv');a.appendChild(el('b',null,s));a.appendChild(el('small',sd?'od':null,sd?'התחלה · '+dmy(sd):'התחלה'));var z=el('div','tv');z.appendChild(el('b',null,e));z.appendChild(el('small',ed?'od':null,ed?'סיום · '+dmy(ed):'סיום'));r.appendChild(a);r.appendChild(el('div','ar'));r.appendChild(z);return r;}
+function timeRow(s,e,sd,ed){var r=el('div','bkt');
+var a=el('div','tv');if(sd)a.appendChild(el('small','od',dmy(sd)));a.appendChild(el('b',null,s));a.appendChild(el('small',null,'התחלה'));
+var z=el('div','tv');if(ed)z.appendChild(el('small','od',dmy(ed)));z.appendChild(el('b',null,e));z.appendChild(el('small',null,'סיום'));
+r.appendChild(a);r.appendChild(el('div','ar'));r.appendChild(z);return r;}
 function hrs(t){var a=(t||'').split(':');return Number(a[0])+Number(a[1])/60;}
 function mergeFrom(base,o,X){
 if(!o||!o.rows)return;
 o.rows.forEach(function(r2){var row=base.rows.filter(function(w){return w.key==r2.key;})[0];if(!row)return;
-r2.bars.forEach(function(b){if(!(b.sDay&&b.eDay&&b.sDay<=X&&b.eDay>=X))return;
+r2.bars.concat(r2.other||[]).forEach(function(b){if(!(b.sDay&&b.eDay&&b.sDay<=X&&b.eDay>=X))return;
 if(row.bars.some(function(x){return x.t==b.t&&x.sT==b.sT&&(x.sDay||X)==b.sDay;}))return;
 var nb={};for(var k in b)nb[k]=b[k];nb.s=b.sDay<X?0:hrs(b.sT);nb.e=b.eDay>X?24:hrs(b.eT);row.bars.push(nb);});
 row.bars.sort(function(x,y){return x.s-y.s;});});
@@ -649,7 +654,12 @@ if(free.length){var cf=el('div','c');cf.appendChild(el('div','h','פנויים �
 rows.forEach(function(x){
 if(!SV.car)w.appendChild(el('div','gh',carTitle(x)));
 if(!x.bars.length){var c2=el('div','c');c2.appendChild(el('div','ttl','אין שיבוצים ביום הזה'));w.appendChild(c2);}
-withGaps(x.bars).forEach(function(b){bookingCard(b,w);});});
+withGaps(x.bars).forEach(function(b){bookingCard(b,w);});
+if(SV.car){var tb=el('div','acts');var tc=el('div','c');tc.style.display='none';
+x.bars.concat(x.other||[]).forEach(function(b){tc.appendChild(el('div','raw',((x.other||[]).indexOf(b)>=0?'[מסונן] ':'')+(b.sDay||'')+' '+(b.sT||fmtT(b.s))+' → '+(b.eDay||'')+' '+(b.eT||fmtT(b.e))+' · '+(b.raw||b.t)));});
+if(!tc.children.length)tc.appendChild(el('div','raw','לא נמצאו פסים לרכב הזה'));
+tb.appendChild(btn('פרטים טכניים',null,function(){tc.style.display=tc.style.display=='none'?'block':'none';}));w.appendChild(tb);w.appendChild(tc);}
+});
 }
 }
 function done(html,dn,when){
