@@ -81,6 +81,9 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx button.x{background:rgb(225,45,45)!important;color:white!important}'+
 '.qbx button.n{background:rgb(236,238,242)!important;color:rgb(70,78,90)!important}'+
 '.qbx .tog{cursor:pointer}'+
+'.qbx .dw{position:relative;display:block;min-width:0}'+
+'.qbx .dw span{display:flex;align-items:center;justify-content:center;height:50px;border:1px solid rgb(226,230,236);border-radius:12px;background:rgb(248,249,251);font-size:17px;font-weight:600;direction:ltr}'+
+'.qbx .dw input{position:absolute!important;top:0;left:0;right:0;bottom:0;height:50px!important;opacity:0.011;z-index:2}'+
 '.qbx .ot{font-weight:600}'+
 '.qbx .os{font-size:12px;color:rgb(120,128,140);margin-top:2px}'+
 '.qbx .gh{font-weight:800;font-size:15px;margin:16px 4px 8px;text-align:right}'+
@@ -150,7 +153,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-22';
+var VER='22.10-23';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -177,7 +180,8 @@ function el(t,c,x){var e=d.createElement(t);if(c)e.className=c;if(x!=null)e.text
 function btn(x,c,f){var b=el('button',c,x);b.type='button';b.onclick=f;return b;}
 function sel(list,val,f){var s=el('select');list.forEach(function(o){var op=el('option',null,o.t);op.value=o.v;s.appendChild(op);});s.value=val;s.onchange=function(){f(s.value);};return s;}
 function fld(lbl,inp){var l=el('label','f');if(lbl)l.appendChild(el('span',null,lbl));l.appendChild(inp);return l;}
-function dateIn(v,f){var i=el('input');i.type='date';i.value=v;i.onchange=function(){if(i.value)f(i.value);};return i;}
+function fdate(x){if(!x)return '';var a=x.split('-');return a[2]+'/'+a[1]+'/'+a[0].slice(2);}
+function dateIn(v,f){var w=el('div','dw');var sp=el('span',null,fdate(v));var i=el('input');i.type='date';i.value=v;i.onchange=function(){if(i.value){sp.textContent=fdate(i.value);f(i.value);}};w.appendChild(sp);w.appendChild(i);w.inp=i;w.setV=function(x){i.value=x;sp.textContent=fdate(x);};return w;}
 function seg(items,isOn,onTap){var s=el('div','seg');items.forEach(function(it){s.appendChild(btn(it[0],isOn(it[1])?'on':'',function(){onTap(it[1]);}));});return s;}
 function minStart(){var t=new Date();t.setMinutes(Math.floor(t.getMinutes()/15)*15,0,0);return t;}
 function clampStart(){var m=minStart();if(mk(S.sd,S.st)<m){S.sd=iso(m);S.st=hm(m);}}
@@ -252,10 +256,10 @@ c.appendChild(seg([['היום',0],['מחר',1],['מחרתיים',2]],function(o)
 var r=el('div','r');
 var sdI=dateIn(S.sd,function(v){keepDur(function(){S.sd=v;});});
 var edI=dateIn(S.ed,function(v){S.ed=v;draw();});
-sdI.min=iso(new Date());edI.min=S.sd;
-sdI.qbStep=30;edI.qbStep=30;
-drag(sdI,function(n){var h=dur();var t=mk(S.sd,S.st);t.setDate(t.getDate()+n);S.sd=iso(t);clampStart();setDur(h>0?h:2);sdI.value=S.sd;edI.value=S.ed;});
-drag(edI,function(n){var t=mk(S.ed,S.et);t.setDate(t.getDate()+n);if(t<=mk(S.sd,S.st))return;S.ed=iso(t);edI.value=S.ed;});
+sdI.inp.min=iso(new Date());edI.inp.min=S.sd;
+sdI.inp.qbStep=30;edI.inp.qbStep=30;
+drag(sdI.inp,function(n){var h=dur();var t=mk(S.sd,S.st);t.setDate(t.getDate()+n);S.sd=iso(t);clampStart();setDur(h>0?h:2);sdI.setV(S.sd);edI.setV(S.ed);});
+drag(edI.inp,function(n){var t=mk(S.ed,S.et);t.setDate(t.getDate()+n);if(t<=mk(S.sd,S.st))return;S.ed=iso(t);edI.setV(S.ed);});
 r.appendChild(fld('קבלה ↕',sdI));
 r.appendChild(fld('החזרה ↕',edI));
 c.appendChild(r);
@@ -345,7 +349,7 @@ for(var j=0;j<=9;j++){setIf('arr_req_user_id[0]['+j+']','');setIf('arr_req_user_
 setv('arr_req_user_id[0][0]',mu.v);setIf('arr_req_user_name[0][0]',mu.t);
 }
 function destName(){return (DEST.filter(function(x){return x.v==S.dest;})[0]||{}).t||'';}
-function sh(x){return site(x).replace(/-/g,'/');}
+function sh(x){return fdate(x);}
 function whenTxt(){return sh(S.sd)+' '+S.st+' עד '+(S.ed!=S.sd?sh(S.ed)+' ':'')+S.et;}
 function send(){
 if(mk(S.sd,S.st)<minStart()){keepDur(function(){});say('שעת הקבלה כבר עברה - עודכנה לשעה הנוכחית. בדוק ושלח שוב');return;}
@@ -542,7 +546,7 @@ function carLbl(w){return [w.num?'רכב '+w.num:'',w.model,w.plate].filter(Stri
 function carTitle(w){return w.num?'רכב '+w.num+(w.model?' - '+w.model:''):(w.model||w.plate||'רכב');}
 function carRank(x,qv){if(!qv)return 5;if(x.num==qv)return 0;if(x.num&&x.num.indexOf(qv)==0)return 1;if(carTitle(x).indexOf(qv)>=0)return 2;if((x.plate||'').indexOf(qv)>=0||(x.plate||'').replace(/-/g,'').indexOf(qv)>=0)return 3;return 9;}
 function bT(b){return (b.sT||fmtT(b.s))+' – '+(b.eT||fmtT(b.e));}
-function dmy(x){var a=x.split('-');return a[2]+'/'+a[1];}
+function dmy(x){return fdate(x);}
 function timeRow(s,e,sd,ed){var r=el('div','bkt');
 var a=el('div','tv');if(sd)a.appendChild(el('small','od',dmy(sd)));a.appendChild(el('b',null,s));a.appendChild(el('small',null,'התחלה'));
 var z=el('div','tv');if(ed)z.appendChild(el('small','od',dmy(ed)));z.appendChild(el('b',null,e));z.appendChild(el('small',null,'סיום'));
@@ -568,7 +572,7 @@ function withGaps(bars){var out=[];bars.forEach(function(b,i){out.push(b);var nx
 function bookingCard(b,parent){
 var isToday=SCH.date==iso(new Date());var nw=new Date();var nh=nw.getHours()+nw.getMinutes()/60;
 var active=isToday&&b.s<=nh&&nh<b.e,past=isToday&&b.e<=nh;
-var dm=function(x){var a=x.split('-');return a[2]+'/'+a[1];};
+var dm=fdate;
 if(!b.gap&&((b.sDay&&b.sDay<SCH.date)||(b.eDay&&b.eDay>SCH.date)))parent.appendChild(el('div','cap','נסיעה של כמה ימים: '+dm(b.sDay||SCH.date)+' – '+dm(b.eDay||SCH.date)));
 var c=el('div','c bk'+(active?' now':'')+(past?' past':'')+(b.gap?' gap':''));
 var m=el('div','bkm');m.appendChild(timeRow(b.sT||fmtT(b.s),b.eT||fmtT(b.e),b.sDay&&b.sDay!=SCH.date?b.sDay:'',b.eDay&&b.eDay!=SCH.date?b.eDay:''));m.appendChild(el('div','bkn',b.t));if(b.d)m.appendChild(el('div','bkd',b.d));c.appendChild(m);
@@ -621,8 +625,8 @@ if(curRow&&curRow.plate){var pl0=el('div','lg',curRow.plate);pl0.style.marginTop
 c.appendChild(cl);
 r=el('div','r');r.style.marginTop='12px';
 var auto=function(){SV.res=null;if(SV.car||SV.hour)showSch();else schDraw();};
-var sdt=dateIn(SV.date,function(v){SV.date=v;auto();});sdt.qbStep=30;
-drag(sdt,function(n){var t=mk(SV.date,'12:00');t.setDate(t.getDate()+n);SV.date=iso(t);sdt.value=SV.date;},auto);
+var sdt=dateIn(SV.date,function(v){SV.date=v;auto();});sdt.inp.qbStep=30;
+drag(sdt.inp,function(n){var t=mk(SV.date,'12:00');t.setDate(t.getDate()+n);SV.date=iso(t);sdt.setV(SV.date);},auto);
 var shr=sel([{v:'',t:'כל היום'}].concat(TO),SV.hour,function(v){SV.hour=v;auto();});
 drag(shr,function(n){if(!SV.hour){var nq=new Date();nq.setMinutes(Math.floor(nq.getMinutes()/15)*15,0,0);SV.hour=hm(nq);}SV.hour=TO[clampI(idx(SV.hour)+n)].v;shr.value=SV.hour;},auto);
 r.appendChild(fld('תאריך ↕',sdt));
