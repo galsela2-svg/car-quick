@@ -148,7 +148,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-13';
+var VER='22.10-14';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -215,12 +215,12 @@ return m?m[1]:t;
 }
 function idx(t){for(var i=0;i<TO.length;i++){if(TO[i].v==t)return i;}return 0;}
 function clampI(i){return i<0?0:i>TO.length-1?TO.length-1:i;}
-function drag(e,apply){
+function drag(e,apply,onEnd){
 var y0=null,last=0,moved=false;
 e.style.touchAction='none';
 e.addEventListener('touchstart',function(ev){y0=ev.touches[0].clientY;last=0;moved=false;},{passive:true});
 e.addEventListener('touchmove',function(ev){if(y0==null)return;var dy=ev.touches[0].clientY-y0;if(!moved&&Math.abs(dy)<8)return;moved=true;ev.preventDefault();var n=Math.round(-dy/(e.qbStep||22));if(n!=last){apply(n-last);last=n;}},{passive:false});
-e.addEventListener('touchend',function(ev){var m=moved;y0=null;moved=false;if(m){ev.preventDefault();draw();}},{passive:false});
+e.addEventListener('touchend',function(ev){var m=moved;y0=null;moved=false;if(m){ev.preventDefault();(onEnd||draw)();}},{passive:false});
 }
 function pickDest(){return new Promise(function(res){
 var m=el('div','mdl');var c=el('div','c');
@@ -577,8 +577,12 @@ if(curRow&&curRow.plate){var pl0=el('div','lg',curRow.plate);pl0.style.marginTop
 c.appendChild(cl);
 r=el('div','r');r.style.marginTop='12px';
 var auto=function(){SV.res=null;if(SV.car||SV.hour)showSch();else schDraw();};
-r.appendChild(fld('תאריך',dateIn(SV.date,function(v){SV.date=v;auto();})));
-r.appendChild(fld('שעה (לא חובה)',sel([{v:'',t:'כל היום'}].concat(TO),SV.hour,function(v){SV.hour=v;auto();})));
+var sdt=dateIn(SV.date,function(v){SV.date=v;auto();});sdt.qbStep=30;
+drag(sdt,function(n){var t=mk(SV.date,'12:00');t.setDate(t.getDate()+n);SV.date=iso(t);sdt.value=SV.date;},auto);
+var shr=sel([{v:'',t:'כל היום'}].concat(TO),SV.hour,function(v){SV.hour=v;auto();});
+drag(shr,function(n){if(!SV.hour){var nq=new Date();nq.setMinutes(Math.floor(nq.getMinutes()/15)*15,0,0);SV.hour=hm(nq);}SV.hour=TO[clampI(idx(SV.hour)+n)].v;shr.value=SV.hour;},auto);
+r.appendChild(fld('תאריך ↕',sdt));
+r.appendChild(fld('שעה ↕ (לא חובה)',shr));
 c.appendChild(r);
 var a=el('div','acts');a.appendChild(btn(SV.busy?'טוען…':'הצג','on',showSch));c.appendChild(a);
 w.appendChild(c);
