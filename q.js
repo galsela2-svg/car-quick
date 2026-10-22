@@ -126,7 +126,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-1';
+var VER='22.10-2';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -155,7 +155,10 @@ function sel(list,val,f){var s=el('select');list.forEach(function(o){var op=el('
 function fld(lbl,inp){var l=el('label','f');if(lbl)l.appendChild(el('span',null,lbl));l.appendChild(inp);return l;}
 function dateIn(v,f){var i=el('input');i.type='date';i.value=v;i.onchange=function(){if(i.value)f(i.value);};return i;}
 function seg(items,isOn,onTap){var s=el('div','seg');items.forEach(function(it){s.appendChild(btn(it[0],isOn(it[1])?'on':'',function(){onTap(it[1]);}));});return s;}
-function keepDur(fn){var h=dur();fn();setDur(h>0?h:2);draw();}
+function minStart(){var t=new Date();t.setMinutes(Math.floor(t.getMinutes()/15)*15,0,0);return t;}
+function clampStart(){var m=minStart();if(mk(S.sd,S.st)<m){S.sd=iso(m);S.st=hm(m);}}
+function keepDur(fn){var h=dur();fn();clampStart();setDur(h>0?h:2);draw();}
+function startOpts(){var m=minStart();return TO.filter(function(x){return mk(S.sd,x.v)>=m;});}
 function ask(title,text,inputs,ok,cancel){return new Promise(function(res){
 var m=el('div','mdl');var c=el('div','c');
 if(title)c.appendChild(el('div','ttl',title));
@@ -194,7 +197,7 @@ function drag(e,apply){
 var y0=null,last=0,moved=false;
 e.style.touchAction='none';
 e.addEventListener('touchstart',function(ev){y0=ev.touches[0].clientY;last=0;moved=false;},{passive:true});
-e.addEventListener('touchmove',function(ev){if(y0==null)return;var dy=ev.touches[0].clientY-y0;if(!moved&&Math.abs(dy)<8)return;moved=true;ev.preventDefault();var n=Math.round(-dy/22);if(n!=last){apply(n-last);last=n;}},{passive:false});
+e.addEventListener('touchmove',function(ev){if(y0==null)return;var dy=ev.touches[0].clientY-y0;if(!moved&&Math.abs(dy)<8)return;moved=true;ev.preventDefault();var n=Math.round(-dy/(e.qbStep||22));if(n!=last){apply(n-last);last=n;}},{passive:false});
 e.addEventListener('touchend',function(ev){var m=moved;y0=null;moved=false;if(m){ev.preventDefault();draw();}},{passive:false});
 }
 function pickDest(){return new Promise(function(res){
@@ -221,13 +224,19 @@ var c=el('div','c');
 c.appendChild(el('div','h','📅 מתי'));
 c.appendChild(seg([['היום',0],['מחר',1],['מחרתיים',2]],function(o){return S.sd==dayIso(o);},function(o){keepDur(function(){S.sd=dayIso(o);});}));
 var r=el('div','r');
-r.appendChild(fld('קבלה',dateIn(S.sd,function(v){keepDur(function(){S.sd=v;});})));
-r.appendChild(fld('החזרה',dateIn(S.ed,function(v){S.ed=v;draw();})));
+var sdI=dateIn(S.sd,function(v){keepDur(function(){S.sd=v;});});
+var edI=dateIn(S.ed,function(v){S.ed=v;draw();});
+sdI.min=iso(new Date());edI.min=S.sd;
+sdI.qbStep=30;edI.qbStep=30;
+drag(sdI,function(n){var h=dur();var t=mk(S.sd,S.st);t.setDate(t.getDate()+n);S.sd=iso(t);clampStart();setDur(h>0?h:2);sdI.value=S.sd;edI.value=S.ed;});
+drag(edI,function(n){var t=mk(S.ed,S.et);t.setDate(t.getDate()+n);if(t<=mk(S.sd,S.st))return;S.ed=iso(t);edI.value=S.ed;});
+r.appendChild(fld('קבלה ↕',sdI));
+r.appendChild(fld('החזרה ↕',edI));
 c.appendChild(r);
 r=el('div','r');
-var stS=sel(TO,S.st,function(v){keepDur(function(){S.st=v;});});
+var stS=sel(startOpts(),S.st,function(v){keepDur(function(){S.st=v;});});
 var etS=sel(TO,S.et,function(v){S.et=v;draw();});
-drag(stS,function(n){var h=dur();S.st=TO[clampI(idx(S.st)+n)].v;setDur(h>0?h:2);stS.value=S.st;etS.value=S.et;});
+drag(stS,function(n){var h=dur();S.st=TO[clampI(idx(S.st)+n)].v;clampStart();setDur(h>0?h:2);stS.value=S.st;etS.value=S.et;});
 drag(etS,function(n){S.et=TO[clampI(idx(S.et)+n)].v;etS.value=S.et;});
 r.appendChild(fld('משעה ↕',stS));
 r.appendChild(fld('עד שעה ↕',etS));
@@ -313,6 +322,7 @@ function destName(){return (DEST.filter(function(x){return x.v==S.dest;})[0]||{}
 function sh(x){return site(x).replace(/-/g,'/');}
 function whenTxt(){return sh(S.sd)+' '+S.st+' עד '+(S.ed!=S.sd?sh(S.ed)+' ':'')+S.et;}
 function send(){
+if(mk(S.sd,S.st)<minStart()){keepDur(function(){});say('שעת הקבלה כבר עברה - עודכנה לשעה הנוכחית. בדוק ושלח שוב');return;}
 if(!S.dest){pickDest().then(function(v){if(v){S.dest=v;draw();send();}});return;}
 if(dur()<=0){say('שעת ההחזרה חייבת להיות אחרי שעת הקבלה');return;}
 var dn=destName(),when=whenTxt();
