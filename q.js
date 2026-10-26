@@ -154,7 +154,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='26.10-2';
+var VER='26.10-3';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -408,9 +408,24 @@ var vals=tds.map(function(x){var tt=Array.prototype.map.call(x.querySelectorAll(
 var text=vals.join(' ');
 if(!text||text.length>600)return;
 var fields=vals.map(function(v,i){return [hdr&&hdr[i]?hdr[i]:'',v];}).filter(function(f){return f[1];});
+if(!/\d{1,2}[\/.]\d{1,2}|\d{1,2}:\d{2}/.test(text))return;
 out.push({fields:fields,text:text,tr:tr});
 });
 });
+if(!out.length)out=parseOrderBlocks(doc);
+return out;
+}
+function parseOrderBlocks(doc){
+var cand=[],picked=[];var DT=/\d{1,2}[\/.]\d{1,2}/,TT=/\d{1,2}:\d{2}/,HB=/[א-ת]{2,}[^א-ת]+[א-ת]{2,}/;
+Array.prototype.forEach.call(doc.querySelectorAll('div,li,section,article,form,tr'),function(e){
+if(e.closest('[id*="vkb"],[class*="vkb"],[id="messages"],.ui-datepicker,[id="footer"],[id="clock"],[id="header"]'))return;
+var t=clean(e.innerText||e.textContent);if(t.length<12||t.length>400||!DT.test(t)||!TT.test(t)||!HB.test(t))return;
+cand.push({e:e,t:t});});
+cand.sort(function(a,b){return a.t.length-b.t.length;});
+var out=[];
+cand.forEach(function(c){if(picked.some(function(p){return c.e.contains(p)||p.contains(c.e);}))return;picked.push(c.e);
+var lines=(c.e.innerText||c.e.textContent).split(/\n+/).map(clean).filter(String);
+out.push({fields:lines.map(function(l){var m=l.match(/^([^:]{1,20}):\s*(.+)$/);return m&&!/^\d/.test(l)?[m[1],m[2]]:['',l];}),text:c.t,tr:c.e});});
 return out;
 }
 function carName(v){if(!v)return null;var p=plateOf(v);if(p){var c=CARS.filter(function(x){return plateOf(x.t)==p;})[0];return c?noNum(c.t):p;}
@@ -458,8 +473,11 @@ w.appendChild(el('div','h ctr','📋 ההזמנות שלי'));
 var list=parseOrders(doc);
 if(!list.length){var nc=doc.querySelector('.no-content');var c=el('div','c');c.appendChild(el('div','ttl',nc?clean(nc.textContent):'לא נמצאו הזמנות'));w.appendChild(c);}
 list.forEach(function(o){var card=orderCard(o,w,false,true);o.cancel=findCancel(o.tr,false);o.link=o.cancel?'':rowLink(o.tr);
-if(o.cancel||o.link){var db=btn('🗑 מחק הזמנה','del',function(){ask('למחוק את ההזמנה?',o.fields.map(function(f){return f[1];}).join(' · '),null,'מחק','ביטול').then(function(ok){if(ok)delOrder(o);});});card.appendChild(db);}});
-var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));w.appendChild(a);
+var db=btn('🗑 מחק','del',function(){
+if(!o.cancel&&!o.link){ask('לא מצאתי איך לבטל את ההזמנה הזו דרך האפליקציה','אפשר לבטל אותה באתר המקורי, ב"ניהול הזמנות".',null,'פתח באתר','סגור').then(function(ok){if(ok)location.href='/my_orders.php';});return;}
+ask('למחוק את ההזמנה?',o.fields.map(function(f){return f[1];}).join(' · '),null,'מחק','ביטול').then(function(ok){if(ok)delOrder(o);});});
+card.appendChild(db);});
+var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));a.appendChild(btn('הצג את הדף שנטען',null,showFrame));w.appendChild(a);
 }).catch(function(e){say(String(e)).then(back);});
 }
 function delOrder(o){
