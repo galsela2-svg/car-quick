@@ -81,6 +81,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx button.x{background:rgb(225,45,45)!important;color:white!important}'+
 '.qbx button.n{background:rgb(236,238,242)!important;color:rgb(70,78,90)!important}'+
 '.qbx .tog{cursor:pointer}'+
+'.qbx textarea.dump{display:block;width:calc(100vw - 64px);max-width:420px;height:220px;margin:12px 0 0;font-size:11px;direction:ltr;text-align:left;border:1px solid rgb(226,230,236);border-radius:12px;padding:8px;background:rgb(248,249,251);color:rgb(28,32,38)}'+
 '.qbx button.del{display:block!important;margin:12px auto 0!important;background:rgb(254,226,226)!important;color:rgb(185,28,28)!important;font-weight:700}'+
 '.qbx .dw{position:relative;display:block;min-width:0}'+
 '.qbx .dw span{display:flex;align-items:center;justify-content:center;height:50px;border:1px solid rgb(226,230,236);border-radius:12px;background:rgb(248,249,251);font-size:17px;font-weight:600;direction:ltr}'+
@@ -154,7 +155,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='26.10-3';
+var VER='26.10-4';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -477,8 +478,29 @@ var db=btn('🗑 מחק','del',function(){
 if(!o.cancel&&!o.link){ask('לא מצאתי איך לבטל את ההזמנה הזו דרך האפליקציה','אפשר לבטל אותה באתר המקורי, ב"ניהול הזמנות".',null,'פתח באתר','סגור').then(function(ok){if(ok)location.href='/my_orders.php';});return;}
 ask('למחוק את ההזמנה?',o.fields.map(function(f){return f[1];}).join(' · '),null,'מחק','ביטול').then(function(ok){if(ok)delOrder(o);});});
 card.appendChild(db);});
-var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));a.appendChild(btn('הצג את הדף שנטען',null,showFrame));w.appendChild(a);
+var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));a.appendChild(btn('הצג את הדף שנטען',null,showFrame));a.appendChild(btn('העתק מבנה דף',null,function(){dumpOrders(list);}));w.appendChild(a);
 }).catch(function(e){say(String(e)).then(back);});
+}
+function cleanHtml(doc){var b=doc.body.cloneNode(true);Array.prototype.forEach.call(b.querySelectorAll('script,style,link,svg,noscript,[id*="vkb"],[class*="vkb"],.ui-datepicker,[id*="pick_users"]'),function(x){x.remove();});
+return b.innerHTML.replace(/\s+/g,' ').replace(/ style="[^"]*"/g,'').slice(0,60000);}
+function pageScripts(doc){var s=Array.prototype.map.call(doc.querySelectorAll('script:not([src])'),function(x){return x.textContent;}).filter(function(t){return /cancel|delete|order|edit|bitul|ביטול|מחק|עריכ/i.test(t);}).join('\n---\n').replace(/\s+/g,' ').slice(0,20000);
+var ext=Array.prototype.map.call(doc.querySelectorAll('script[src]'),function(x){return x.getAttribute('src');}).join(' , ');return s+'\nEXTERNAL: '+ext;}
+function dumpOrders(list){
+loading('אוסף את מבנה הדף…');
+var doc=IFR.contentDocument;var txt='=== MY_ORDERS '+VER+' ===\n'+cleanHtml(doc)+'\n=== SCRIPTS ===\n'+pageScripts(doc);
+var lk=(list.filter(function(o){return o.link;})[0]||{}).link;
+var p=lk?getDoc(lk).then(function(d2){txt+='\n=== ORDER PAGE '+lk.replace(/^https?:\/\/[^\/]+/,'')+' ===\n'+cleanHtml(d2)+'\n=== ORDER SCRIPTS ===\n'+pageScripts(d2);}).catch(function(){}):Promise.resolve();
+p.then(function(){
+var w=shell();var c=el('div','c');c.appendChild(el('div','ttl','מבנה הדף'));
+c.appendChild(el('div','msg ctr','לחץ "העתק", ואז הדבק את זה בצ\'אט עם Claude'));
+var ta=el('textarea','dump');ta.value=txt;ta.readOnly=true;c.appendChild(ta);
+var st=el('div','lg','');
+var a=el('div','acts');a.style.marginTop='12px';
+a.appendChild(btn('העתק','on',function(){var ok=false;try{ta.readOnly=false;ta.focus();ta.setSelectionRange(0,ta.value.length);ok=d.execCommand('copy');ta.readOnly=true;}catch(e){}
+if(!ok&&navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){st.textContent='✅ הועתק';},function(){st.textContent='לא הצלחתי להעתיק אוטומטית - לחץ לחיצה ארוכה על הטקסט ← בחר הכול ← העתק';});}else st.textContent=ok?'✅ הועתק ('+txt.length+' תווים)':'לא הצלחתי להעתיק אוטומטית - לחץ לחיצה ארוכה על הטקסט ← בחר הכול ← העתק';}));
+a.appendChild(btn('חזרה',null,ordersView));
+c.appendChild(a);c.appendChild(st);w.appendChild(c);
+});
 }
 function delOrder(o){
 loading('מוחק הזמנה…');ALERTS=[];
