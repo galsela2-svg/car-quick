@@ -168,7 +168,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='26.10-6';
+var VER='26.10-7';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -216,7 +216,14 @@ function say(t){return ask('',t,null,'סגור',null);}
 function back(){if(form)draw();else box.remove();}
 function shell(){
 box.innerHTML='';box.appendChild(el('style',null,css));
-var h=el('div','hdr');var ttl=el('b',null,'הזמנת רכב');ttl.onclick=pickTheme;ttl.style.cursor='pointer';h.appendChild(ttl);
+var h=el('div','hdr');var ttl=el('b',null,'הזמנת רכב');ttl.style.cursor='pointer';ttl.style.webkitUserSelect='none';ttl.style.userSelect='none';ttl.style.webkitTouchCallout='none';
+var lpT=null,lpDone=false;
+ttl.addEventListener('touchstart',function(){lpDone=false;lpT=setTimeout(function(){lpDone=true;pickTheme();},550);},{passive:true});
+ttl.addEventListener('touchmove',function(){clearTimeout(lpT);},{passive:true});
+ttl.addEventListener('touchend',function(ev){clearTimeout(lpT);if(lpDone)ev.preventDefault();},{passive:false});
+ttl.addEventListener('contextmenu',function(ev){ev.preventDefault();});
+ttl.onclick=function(){if(lpDone){lpDone=false;return;}if(VIEW!='order'||!d.querySelector('.qbx .bar'))back();};
+h.appendChild(ttl);
 var hb=el('div','hb');hb.appendChild(VIEW=='sch'?btn('הזמנה',null,back):btn('סידור',null,scheduleView));hb.appendChild(btn('ההזמנות שלי',null,ordersView));hb.appendChild(btn('✕',null,function(){box.remove();}));h.appendChild(hb);
 box.appendChild(h);
 var us=el('div','users');
