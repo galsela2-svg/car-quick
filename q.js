@@ -82,6 +82,8 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx button.n{background:rgb(236,238,242)!important;color:rgb(70,78,90)!important}'+
 '.qbx .tog{cursor:pointer}'+
 '.qbx textarea.dump{display:block;width:calc(100vw - 64px);max-width:420px;height:220px;margin:12px 0 0;font-size:11px;direction:ltr;text-align:left;border:1px solid rgb(226,230,236);border-radius:12px;padding:8px;background:rgb(248,249,251);color:rgb(28,32,38)}'+
+'.qbx button.del0{background:rgb(254,226,226)!important;color:rgb(185,28,28)!important;font-weight:700}'+
+'.qbx .stt{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--s);color:var(--a);font-weight:700}'+
 '.qbx button.del{display:block!important;margin:12px auto 0!important;background:rgb(254,226,226)!important;color:rgb(185,28,28)!important;font-weight:700}'+
 '.qbx .dw{position:relative;display:block;min-width:0}'+
 '.qbx .dw span{display:flex;align-items:center;justify-content:center;height:50px;border:1px solid rgb(226,230,236);border-radius:12px;background:rgb(248,249,251);font-size:17px;font-weight:600;direction:ltr}'+
@@ -155,7 +157,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='26.10-4';
+var VER='26.10-5';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -464,8 +466,95 @@ return best;
 function rowLink(tr){var a=Array.prototype.filter.call(tr.querySelectorAll('a[href]'),function(x){var h=x.getAttribute('href')||'';return h&&h.charAt(0)!='j'&&h!='/'&&!/logout|my_orders\.php$/.test(h);})[0];return a?a.href:'';}
 function clickLive(e){return new Promise(function(res){var done=false;var h=function(){if(done)return;done=true;IFR.removeEventListener('load',h);setTimeout(function(){patchWin();res();},700);};IFR.addEventListener('load',h);patchWin();try{e.click();}catch(x){}setTimeout(h,4000);});}
 function findYes(doc){var dl=doc.querySelector('.ui-dialog:not([style*="display: none"])');if(!dl)return null;return Array.prototype.filter.call(dl.querySelectorAll('button,input[type="button"],input[type="submit"],a'),function(b){return /(כן|אישור|אשר|מחק|בטל הזמנה)/.test(clean(b.value||b.textContent));})[0]||null;}
+function cellText(c){if(!c)return '';var x=c.cloneNode(true);Array.prototype.forEach.call(x.querySelectorAll('.label,.sort_by_me'),function(y){y.remove();});return clean(x.textContent);}
+function parseMyOrders(doc){
+return Array.prototype.map.call(doc.querySelectorAll('.orders_row'),function(r){
+var o={el:r,id:cellText(r.querySelector('.order_id'))};
+var tm=r.querySelectorAll('.orders_cell.times');
+var ep=function(c){var s=c&&c.querySelector('.sort_by_me');return s?new Date(Number(clean(s.textContent))*1000):null;};
+o.s=ep(tm[0]);o.e=ep(tm[1]);o.sTxt=cellText(tm[0]);o.eTxt=cellText(tm[1]);
+Array.prototype.forEach.call(r.querySelectorAll('.orders_cell'),function(c){var lb=c.querySelector('.label');if(!lb)return;var k=clean(lb.textContent);var v=cellText(c);
+if(/^יעד/.test(k))o.dest=v;else if(/מטרת/.test(k))o.purpose=v;else if(/^רכב/.test(k))o.carRaw=v;else if(/^מצב/.test(k))o.status=v;});
+var cr=o.carRaw||'';var num=(cr.match(/מס[׳']?:?\s*(\d+)/)||[])[1]||'';var pl=plateOf(cr)||'';
+var mdl=clean(cr.split(/,|מס[׳']?:/)[0].replace(/\d+\s*מקומות/,''));
+o.car=(num||pl)?((num?'רכב '+num+' - ':'')+mdl+(pl?' ('+pl+')':'')):'';
+var eb=r.querySelector('button[onclick*="mode=edit"]');var mm=eb?(eb.getAttribute('onclick')||'').match(/location\.href='([^']+)'/):null;o.editUrl=mm?mm[1].replace(/&amp;/g,'&'):(o.id?'/my_orders.php?mode=edit&ord_id='+o.id:'');
+return o;}).filter(function(o){return o.id||o.s;});
+}
+function dtTxt(D){return D?p2(D.getDate())+'/'+p2(D.getMonth()+1)+'/'+String(D.getFullYear()).slice(2)+' '+hm(D):'';}
+function myOrderCard(o,parent,hl){
+var c=el('div','c ord'+(hl?' hl':''));
+var hd=el('div','hrow');hd.style.margin='0 0 8px';hd.appendChild(el('div','h',o.dest||'הזמנה'));if(o.status)hd.appendChild(el('span','stt',o.status));c.appendChild(hd);
+var tr=el('div','bkt');var a=el('div','tv');a.appendChild(el('small','od',o.s?fdate(iso(o.s)):''));a.appendChild(el('b',null,o.s?hm(o.s):o.sTxt));a.appendChild(el('small',null,'קבלה'));
+var z=el('div','tv');z.appendChild(el('small','od',o.e?fdate(iso(o.e)):''));z.appendChild(el('b',null,o.e?hm(o.e):o.eTxt));z.appendChild(el('small',null,'החזרה'));
+tr.appendChild(a);tr.appendChild(el('div','ar'));tr.appendChild(z);c.appendChild(tr);
+carBox(c,o.car||null,'טרם שובץ');
+var meta=[o.purpose,o.id?'הזמנה '+o.id:''].filter(Boolean).join(' · ');if(meta)c.appendChild(el('div','lg',meta));
+parent.appendChild(c);return c;
+}
 function ordersView(){
 VIEW='orders';
+var MY=null;
+loading('טוען הזמנות…');
+withLogin('/my_orders.php').then(function(){return loadFrame('/my_orders.php');}).then(function(doc){
+MY=parseMyOrders(doc);
+if(!doc.querySelector('.orders_row')&&!doc.querySelector('.no-content'))throw 'skip';
+var w=shell();
+w.appendChild(el('div','h ctr','ההזמנות שלי'));
+if(!MY.length){var c0=el('div','c');c0.appendChild(el('div','ttl','אין הזמנות'));w.appendChild(c0);}
+MY.forEach(function(o){var card=myOrderCard(o,w,false);var ac=el('div','acts');ac.style.marginTop='12px';
+if(o.e)ac.appendChild(btn('+2','on',function(){var ne=new Date(o.e.getTime()+2*3600000);ask('להאריך בשעתיים?','החזרה חדשה: '+dtTxt(ne),null,'הארך','ביטול').then(function(ok){if(ok)editOrder(o,ne);});}));
+ac.appendChild(btn('עריכת הזמנה',null,function(){pickReturn(o);}));
+ac.appendChild(btn('🗑 מחק','del0',function(){ask('למחוק את ההזמנה?',(o.dest||'')+'\n'+dtTxt(o.s)+' עד '+dtTxt(o.e),null,'מחק','ביטול').then(function(ok){if(ok)deleteOrder(o);});}));
+card.appendChild(ac);});
+var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));
+if(MY.length)a.appendChild(btn('העתק מבנה דף העריכה','lnk',function(){dumpOrders(MY.map(function(o){return {link:o.editUrl};}));}));
+w.appendChild(a);
+}).catch(function(e){if(e==='skip')return ordersViewOld();say(String(e)).then(back);});
+}
+function pickReturn(o){
+var base=o.e||new Date();var st={d:iso(base),t:hm(base)};
+var m=el('div','mdl');var c=el('div','c');c.appendChild(el('div','ttl','שעת החזרה חדשה'));
+c.appendChild(el('div','msg ctr','כרגע: '+dtTxt(o.e)));
+var r=el('div','r');r.style.marginTop='12px';
+var di=dateIn(st.d,function(v){st.d=v;});
+var tl=TO.slice();if(!TO.some(function(x){return x.v==st.t;}))tl.unshift({v:st.t,t:st.t});
+var ts=sel(tl,st.t,function(v){st.t=v;});
+r.appendChild(fld('תאריך',di));r.appendChild(fld('שעה',ts));c.appendChild(r);
+var q2=el('div','ch');q2.style.cssText='margin:10px 0 0;justify-content:center';
+[1,2,3,4].forEach(function(h){q2.appendChild(btn('+'+h,null,function(){var ne=new Date(base.getTime()+h*3600000);st.d=iso(ne);st.t=hm(ne);di.setV(st.d);if(!Array.prototype.some.call(ts.options,function(op){return op.value==st.t;})){var op=el('option',null,st.t);op.value=st.t;ts.insertBefore(op,ts.firstChild);}ts.value=st.t;}));});
+c.appendChild(q2);
+var a=el('div','acts');a.style.marginTop='14px';
+a.appendChild(btn('שמור','on',function(){var ne=mk(st.d,st.t);if(o.s&&ne<=o.s){say('שעת ההחזרה חייבת להיות אחרי שעת הקבלה');return;}m.remove();editOrder(o,ne);}));
+a.appendChild(btn('ביטול',null,function(){m.remove();}));
+c.appendChild(a);m.appendChild(c);box.appendChild(m);
+}
+function jset(doc,n,v){var e=doc.querySelector('[name="'+n+'"]');if(!e)return false;e.value=v;try{var J=doc.defaultView.jQuery;if(J)J(e).val(v).trigger('change');else e.dispatchEvent(new Event('change',{bubbles:true}));}catch(x){}return true;}
+function openEdit(o){if(!o.editUrl)return Promise.reject('לא נמצא קישור לעריכת ההזמנה');return withLogin('/my_orders.php').then(function(){return loadFrame(o.editUrl);}).then(function(doc){patchWin();return doc;});}
+function afterMsgs(){var dd=IFR.contentDocument;try{return msgs(dd,dd.documentElement.outerHTML).map(function(x){return x.t;}).concat(ALERTS);}catch(e){return ALERTS;}}
+function editOrder(o,ne){
+loading('מעדכן הזמנה…');ALERTS=[];
+openEdit(o).then(function(doc){
+var okE=jset(doc,'end_date',p2(ne.getDate())+'-'+p2(ne.getMonth()+1)+'-'+ne.getFullYear());var okT=jset(doc,'end_time',hm(ne));
+if(!okE||!okT)throw 'לא מצאתי בדף העריכה את שדות שעת הסיום';
+var f=doc.querySelector('[name="end_time"]').form;
+var sb=Array.prototype.filter.call((f||doc).querySelectorAll('input[type="submit"],button[type="submit"],button:not([type]),input[type="button"]'),function(b){var t=clean(b.value||b.textContent);return !badCtl(b)&&t&&!/מחק|ביטול|בטל|סגור|בחר|בחירה/.test(t);})[0];
+if(!sb)throw 'לא מצאתי כפתור שמירה בדף העריכה';
+return clickLive(sb);
+}).then(function(){var y=findYes(IFR.contentDocument);if(y)return clickLive(y);})
+.then(function(){var ms=afterMsgs();return getDoc('/my_orders.php').then(function(d2){var n=parseMyOrders(d2).filter(function(x){return x.id==o.id;})[0];
+var ok=n&&n.e&&Math.abs(n.e-ne)<60000;say((ok?'✅ ההזמנה עודכנה - החזרה ב-'+dtTxt(n.e):'ההזמנה לא עודכנה'+(n&&n.e?' (החזרה עדיין '+dtTxt(n.e)+')':''))+(ms.length?'\n'+ms.join('\n'):'')).then(ordersView);});})
+.catch(function(e){say(String(e)).then(ordersView);});
+}
+function deleteOrder(o){
+loading('מוחק הזמנה…');ALERTS=[];
+openEdit(o).then(function(doc){var c=findCancel(doc.body,true)||findCancel(doc.body,false);if(!c)throw 'לא מצאתי כפתור מחיקה בדף העריכה';return clickLive(c);})
+.then(function(){var y=findYes(IFR.contentDocument);if(y)return clickLive(y);})
+.then(function(){var ms=afterMsgs();return getDoc('/my_orders.php').then(function(d2){var still=parseMyOrders(d2).some(function(x){return x.id==o.id;});
+say((still?'ההזמנה לא נמחקה':'✅ ההזמנה נמחקה')+(ms.length?'\n'+ms.join('\n'):'')).then(ordersView);});})
+.catch(function(e){say(String(e)).then(ordersView);});
+}
+function ordersViewOld(){
 loading('טוען הזמנות…');
 withLogin('/my_orders.php').then(function(){return loadFrame('/my_orders.php');}).then(function(doc){
 patchWin();
@@ -762,9 +851,12 @@ var isOk=!isBad&&/(נקלט|נשמר|בוצע|שובץ|אושר|בהצלחה|ה�
 var car=findCar(all);
 getDoc('/my_orders.php').then(function(d2){
 var k1=site(S.sd),k2=k1.replace(/-/g,'/'),k3=k2.slice(0,6)+k2.slice(8);
-var match=parseOrders(d2).filter(function(o){return (o.text.indexOf(k1)>=0||o.text.indexOf(k2)>=0||o.text.indexOf(k3)>=0)&&o.text.indexOf(S.st)>=0;})[0]||null;
+var st0d=mk(S.sd,S.st);
+var match=parseMyOrders(d2).filter(function(o){return o.s&&Math.abs(o.s-st0d)<60000;})[0]||null;
+if(match)match.my=true;
+if(!match)match=parseOrders(d2).filter(function(o){return (o.text.indexOf(k1)>=0||o.text.indexOf(k2)>=0||o.text.indexOf(k3)>=0)&&o.text.indexOf(S.st)>=0;})[0]||null;
 if(match&&!isBad)isOk=true;
-if(match)car=carOf(match)||car;
+if(match)car=(match.my?match.car:carOf(match))||car;
 fin(match);
 }).catch(function(){fin(null);});
 function fin(match){
@@ -784,7 +876,7 @@ if(!car&&kind=='ok')c.appendChild(el('div','lg','הסדרן ישבץ רכב בה
 list.forEach(function(t){c.appendChild(el('div','msg',t));});
 if(!list.length&&!match&&kind!='ok')c.appendChild(el('div','msg','האתר לא החזיר הודעה. בדוק ב"ההזמנות שלי".'));
 w.appendChild(c);
-if(match){w.appendChild(el('div','sub','פרטי ההזמנה במערכת'));orderCard(match,w,true,false);}
+if(match){w.appendChild(el('div','sub','פרטי ההזמנה במערכת'));if(match.my)myOrderCard(match,w,true);else orderCard(match,w,true,false);}
 var a=el('div','acts');
 a.appendChild(btn('📋 ההזמנות שלי','on',ordersView));
 a.appendChild(btn('הזמנה נוספת',null,back));
