@@ -168,7 +168,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='26.10-8';
+var VER='26.10-9';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -275,7 +275,6 @@ function draw(){
 VIEW='order';
 var w=shell();
 var c=el('div','c');
-c.appendChild(el('div','h','📅 מתי'));
 c.appendChild(seg([['היום',0],['מחר',1],['מחרתיים',2]],function(o){return S.sd==dayIso(o);},function(o){keepDur(function(){S.sd=dayIso(o);});}));
 var r=el('div','r');
 var sdI=dateIn(S.sd,function(v){keepDur(function(){S.sd=v;});});
@@ -284,16 +283,16 @@ sdI.inp.min=iso(new Date());edI.inp.min=S.sd;
 sdI.inp.qbStep=30;edI.inp.qbStep=30;
 drag(sdI.inp,function(n){var h=dur();var t=mk(S.sd,S.st);t.setDate(t.getDate()+n);S.sd=iso(t);clampStart();setDur(h>0?h:2);sdI.setV(S.sd);edI.setV(S.ed);});
 drag(edI.inp,function(n){var t=mk(S.ed,S.et);t.setDate(t.getDate()+n);if(t<=mk(S.sd,S.st))return;S.ed=iso(t);edI.setV(S.ed);});
-r.appendChild(fld('מ: '+dayName(S.sd)+' ↕',sdI));
-r.appendChild(fld('עד: '+dayName(S.ed)+' ↕',edI));
+r.appendChild(fld('מ: '+dayName(S.sd),sdI));
+r.appendChild(fld('עד: '+dayName(S.ed),edI));
 c.appendChild(r);
 r=el('div','r');
 var stS=sel(startOpts(),S.st,function(v){keepDur(function(){S.st=v;});});
 var etS=sel(TO,S.et,function(v){S.et=v;draw();});
 drag(stS,function(n){var h=dur();S.st=TO[clampI(idx(S.st)+n)].v;clampStart();setDur(h>0?h:2);stS.value=S.st;etS.value=S.et;});
 drag(etS,function(n){S.et=TO[clampI(idx(S.et)+n)].v;etS.value=S.et;});
-r.appendChild(fld('משעה ↕',stS));
-r.appendChild(fld('עד שעה ↕',etS));
+r.appendChild(fld('משעה',stS));
+r.appendChild(fld('עד שעה',etS));
 c.appendChild(r);
 c.appendChild(el('div','sub','משך בשעות'));
 var hs=el('div','hs');
@@ -305,7 +304,7 @@ var onB=hs.querySelector('button.on');if(onB)setTimeout(function(){onB.scrollInt
 if(dur()<=0)c.appendChild(el('div','warn','שעת ההחזרה חייבת להיות אחרי שעת הקבלה'));
 w.appendChild(c);
 c=el('div','c');
-var hd=el('div','hrow');hd.appendChild(el('div','h','📍 לאן'));hd.appendChild(btn(S.edit?'סיום':'עריכה','lnk',function(){S.edit=!S.edit;draw();}));c.appendChild(hd);
+var hd=el('div','hrow');hd.appendChild(el('div','h','לאן'));hd.appendChild(btn(S.edit?'סיום':'עריכה','lnk',function(){S.edit=!S.edit;draw();}));c.appendChild(hd);
 var ch=el('div','ch');
 F.forEach(function(t){var o=DEST.filter(function(x){return x.t==t;})[0];if(!o&&!S.edit)return;ch.appendChild(btn((S.edit?'✕ ':'')+t,S.edit?'x':(o&&S.dest==o.v?'on':''),function(){if(S.edit){F=F.filter(function(x){return x!=t;});sv('qbf',F);}else{S.dest=o.v;}draw();}));});
 if(F.length)c.appendChild(ch);
@@ -327,12 +326,10 @@ c.appendChild(cl);
 w.appendChild(c);
 if(GRPS.length){
 c=el('div','c');
-c.appendChild(el('div','h','🚙 איזה רכב'));
 if(GRPS.length){
 ch=el('div','ch');
 GRPS.forEach(function(g){var v=P[g.id]==null?-1:Number(P[g.id]);ch.appendChild(btn((v==1?'✓ ':v==0?'✕ ':'')+short(g.t),v==1?'g':v==0?'x':'n',function(){P[g.id]=v==-1?1:v==1?0:-1;draw();}));});
 c.appendChild(ch);
-c.appendChild(el('div','lg','ירוק = רוצה · אדום = לא רוצה · אפור = לא משנה'));
 }
 w.appendChild(c);
 }
@@ -359,7 +356,6 @@ var rr=el('div','r');rr.style.margin='12px 0 0';rr.appendChild(fld(a[2],i));c.ap
 });}
 w.appendChild(c);
 }
-if(cur())w.appendChild(btn('הסר את המשתמש '+cur().u+' מהטלפון','lnk ctrb',function(){ask('להסיר את '+cur().u+'?','שם המשתמש והקוד שלו יימחקו מהטלפון',null,'הסר','ביטול').then(function(ok){if(!ok)return;PR.list.splice(PR.cur,1);PR.cur=0;sv('qbu',PR);relogin();});}));
 w.appendChild(el('div','lg','גרסה '+VER));
 var bar=el('div','bar');bar.appendChild(btn('שלח הזמנה','go',send));box.appendChild(bar);
 }
@@ -505,12 +501,11 @@ return o;}).filter(function(o){return o.id||o.s;});
 function dtTxt(D){return D?p2(D.getDate())+'/'+p2(D.getMonth()+1)+'/'+String(D.getFullYear()).slice(2)+' '+hm(D):'';}
 function myOrderCard(o,parent,hl){
 var c=el('div','c ord neu'+(hl?' hl':''));
-var hd=el('div','hrow');hd.style.margin='0 0 8px';hd.appendChild(el('div','h',o.dest||'הזמנה'));if(o.status)hd.appendChild(el('span','stt',o.status));c.appendChild(hd);
+var hd=el('div','hrow');hd.style.margin='0 0 8px';hd.appendChild(el('div','h',o.dest||'הזמנה'));c.appendChild(hd);
 var tr=el('div','bkt');var a=el('div','tv');a.appendChild(el('small','od',o.s?fdate(iso(o.s)):''));a.appendChild(el('b',null,o.s?hm(o.s):o.sTxt));a.appendChild(el('small',null,o.s?'מ: '+dayName(o.s):'קבלה'));
 var z=el('div','tv');z.appendChild(el('small','od',o.e?fdate(iso(o.e)):''));z.appendChild(el('b',null,o.e?hm(o.e):o.eTxt));z.appendChild(el('small',null,o.e?'עד: '+dayName(o.e):'החזרה'));
 tr.appendChild(a);tr.appendChild(el('div','ar'));tr.appendChild(z);c.appendChild(tr);
-var cb=el('div','carbox'+(o.carName?'':' none'));cb.appendChild(el('div','sub',o.carName?'הרכב ששובץ':'רכב'));cb.appendChild(el('div','carname',o.carName||'טרם שובץ'));if(o.carPlate)cb.appendChild(el('div','cplate','('+o.carPlate+')'));c.appendChild(cb);
-var meta=[o.purpose,o.id?'הזמנה '+o.id:''].filter(Boolean).join(' · ');if(meta)c.appendChild(el('div','lg',meta));
+var cb=el('div','carbox'+(o.carName?'':' none'));cb.appendChild(el('div','carname',o.carName||'טרם שובץ'));if(o.carPlate)cb.appendChild(el('div','cplate','('+o.carPlate+')'));c.appendChild(cb);
 parent.appendChild(c);return c;
 }
 function ordersView(){
@@ -524,12 +519,11 @@ var w=shell();
 w.appendChild(el('div','h ctr','ההזמנות שלי'));
 if(!MY.length){var c0=el('div','c');c0.appendChild(el('div','ttl','אין הזמנות'));w.appendChild(c0);}
 MY.forEach(function(o){var card=myOrderCard(o,w,false);var ac=el('div','acts');ac.style.marginTop='12px';
-if(o.e)ac.appendChild(btn('+2','on',function(){var ne=new Date(o.e.getTime()+2*3600000);ask('להאריך בשעתיים?','החזרה חדשה: '+dtTxt(ne),null,'הארך','ביטול').then(function(ok){if(ok)editOrder(o,ne);});}));
+if(o.e)ac.appendChild(btn('+2',null,function(){var ne=new Date(o.e.getTime()+2*3600000);ask('להאריך בשעתיים?','החזרה חדשה: '+dtTxt(ne),null,'הארך','ביטול').then(function(ok){if(ok)editOrder(o,ne);});}));
 ac.appendChild(btn('עריכת הזמנה',null,function(){pickReturn(o);}));
-ac.appendChild(btn('🗑 מחק','del0',function(){ask('למחוק את ההזמנה?',(o.dest||'')+'\n'+dtTxt(o.s)+' עד '+dtTxt(o.e),null,'מחק','ביטול').then(function(ok){if(ok)deleteOrder(o);});}));
+ac.appendChild(btn('מחק','del0',function(){ask('למחוק את ההזמנה?',(o.dest||'')+'\n'+dtTxt(o.s)+' עד '+dtTxt(o.e),null,'מחק','ביטול').then(function(ok){if(ok)deleteOrder(o);});}));
 card.appendChild(ac);});
 var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));
-if(MY.length)a.appendChild(btn('העתק מבנה דף העריכה','lnk',function(){dumpOrders(MY.map(function(o){return {link:o.editUrl};}));}));
 w.appendChild(a);
 }).catch(function(e){if(e==='skip')return ordersViewOld();say(String(e)).then(back);});
 }
