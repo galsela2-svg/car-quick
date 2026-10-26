@@ -154,7 +154,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='26.10-1';
+var VER='26.10-2';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -389,8 +389,8 @@ return out;
 function noNum(t){return t.replace(/^\d+\s+/,'');}
 function findCar(t){
 if(!t)return null;
-var m=t.match(/\d{2,3}-\d{2,3}-\d{2,3}/);
-if(m){var c=CARS.filter(function(x){return x.t.indexOf(m[0])>=0;})[0];return c?noNum(c.t):m[0];}
+var pm=plateOf(t);
+if(pm){var c=CARS.filter(function(x){return plateOf(x.t)==pm;})[0];return c?noNum(c.t):pm;}
 var c2=CARS.filter(function(x){var n=noNum(x.t);return x.v!='0'&&n.length>4&&t.indexOf(n)>=0;})[0];
 return c2?noNum(c2.t):null;
 }
@@ -404,7 +404,7 @@ var ths=tr.querySelectorAll('th');
 if(ths.length){if(!hdr)hdr=Array.prototype.map.call(ths,function(x){return clean(x.textContent);});return;}
 var tds=Array.prototype.filter.call(tr.children,function(x){return x.tagName=='TD';});
 if(tds.length<2)return;
-var vals=tds.map(function(x){return clean(x.textContent);});
+var vals=tds.map(function(x){var tt=Array.prototype.map.call(x.querySelectorAll('[title],[alt]'),function(e){return e.getAttribute('title')||e.getAttribute('alt')||'';}).join(' ');return clean(x.textContent+(tt&&x.textContent.indexOf(tt)<0?' '+tt:''));});
 var text=vals.join(' ');
 if(!text||text.length>600)return;
 var fields=vals.map(function(v,i){return [hdr&&hdr[i]?hdr[i]:'',v];}).filter(function(f){return f[1];});
@@ -413,13 +413,21 @@ out.push({fields:fields,text:text,tr:tr});
 });
 return out;
 }
-function carOf(o){var f=o.fields.filter(function(x){return /רכב/.test(x[0]);})[0];if(f&&f[1]&&f[1]!='-')return f[1];return findCar(o.text);}
+function carName(v){if(!v)return null;var p=plateOf(v);if(p){var c=CARS.filter(function(x){return plateOf(x.t)==p;})[0];return c?noNum(c.t):p;}
+var m=v.match(/^\s*(\d{1,4})\s*$/);if(m){var c2=CARS.filter(function(x){return x.t.split(' ')[0]==m[1];})[0];if(c2){var pl=plateOf(c2.t)||'';return 'רכב '+m[1]+' - '+clean(noNum(c2.t).replace(pl,'').replace(/\d+\s*מקומות/,''))+(pl?' ('+pl+')':'');}}
+return null;}
+function carOf(o){
+var fs=o.fields.filter(function(x){return /רכב/.test(x[0])&&!/מבוקש/.test(x[0]);});
+for(var i=0;i<fs.length;i++){var v=fs[i][1];if(!v||/^[-–\s]*$/.test(v)||/סדרן אוטומטי|לא שובץ|טרם/.test(v))continue;return carName(v)||v;}
+return findCar(o.text);}
 function carBox(parent,car,emptyTxt){var cb=el('div','carbox'+(car?'':' none'));cb.appendChild(el('div','sub',car?'הרכב ששובץ לך':'רכב'));cb.appendChild(el('div','carname',car||emptyTxt));parent.appendChild(cb);}
 function orderCard(o,parent,hl,withCar){
 var c=el('div','c ord'+(hl?' hl':''));
 var car=carOf(o);
 if(withCar)carBox(c,car,'טרם שובץ');
 o.fields.forEach(function(f){if(withCar&&car&&f[1]==car)return;var kv=el('div','kv');kv.appendChild(el('span','k',f[0]||'•'));kv.appendChild(el('span','v',f[1]));c.appendChild(kv);});
+var dt=el('div','raw',o.fields.map(function(f){return (f[0]?f[0]+': ':'')+f[1];}).join(' | '));dt.style.display='none';
+var db0=btn('פרטים','lnk',function(){dt.style.display=dt.style.display=='none'?'block':'none';});c.appendChild(db0);c.appendChild(dt);
 parent.appendChild(c);
 return c;
 }
