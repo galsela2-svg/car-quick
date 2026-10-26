@@ -81,6 +81,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx button.x{background:rgb(225,45,45)!important;color:white!important}'+
 '.qbx button.n{background:rgb(236,238,242)!important;color:rgb(70,78,90)!important}'+
 '.qbx .tog{cursor:pointer}'+
+'.qbx button.del{display:block!important;margin:12px auto 0!important;background:rgb(254,226,226)!important;color:rgb(185,28,28)!important;font-weight:700}'+
 '.qbx .dw{position:relative;display:block;min-width:0}'+
 '.qbx .dw span{display:flex;align-items:center;justify-content:center;height:50px;border:1px solid rgb(226,230,236);border-radius:12px;background:rgb(248,249,251);font-size:17px;font-weight:600;direction:ltr}'+
 '.qbx .dw input{position:absolute!important;top:0;left:0;right:0;bottom:0;height:50px!important;opacity:0.011;z-index:2}'+
@@ -153,7 +154,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='22.10-23';
+var VER='26.10-1';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -407,7 +408,7 @@ var vals=tds.map(function(x){return clean(x.textContent);});
 var text=vals.join(' ');
 if(!text||text.length>600)return;
 var fields=vals.map(function(v,i){return [hdr&&hdr[i]?hdr[i]:'',v];}).filter(function(f){return f[1];});
-out.push({fields:fields,text:text});
+out.push({fields:fields,text:text,tr:tr});
 });
 });
 return out;
@@ -420,18 +421,47 @@ var car=carOf(o);
 if(withCar)carBox(c,car,'טרם שובץ');
 o.fields.forEach(function(f){if(withCar&&car&&f[1]==car)return;var kv=el('div','kv');kv.appendChild(el('span','k',f[0]||'•'));kv.appendChild(el('span','v',f[1]));c.appendChild(kv);});
 parent.appendChild(c);
+return c;
 }
+var ALERTS=[];
+function patchWin(){try{var wn=IFR.contentWindow;wn.confirm=function(){return true;};wn.alert=function(m){ALERTS.push(clean(String(m||'')));};wn.prompt=function(){return '';};}catch(e){}}
+function badCtl(e){return !!e.closest('[id*="vkb"],[class*="vkb"],.ui-datepicker,.ui-timepicker,[id*="pick_users"]');}
+function findCancel(root,needOrder){
+if(!root)return null;var best=null,bs=0;
+Array.prototype.forEach.call(root.querySelectorAll('a,button,input,img,span,div,td,li'),function(e){
+if(badCtl(e))return;if(e.getClientRects&&!e.getClientRects().length)return;
+var t=clean(e.value||e.getAttribute('title')||e.getAttribute('alt')||e.textContent);
+if(!t||t.length>30||!/(בטל|ביטול|מחק|מחיקה)/.test(t)||/סינון/.test(t))return;
+var sc=/הזמנה/.test(t)?3:1;if(needOrder&&sc<3)return;
+var tgt=e;if(/^(IMG|SPAN|DIV|TD|LI)$/.test(e.tagName)){tgt=e.closest('a,button,[onclick]')||(e.getAttribute('onclick')?e:null);}
+if(tgt&&sc>bs){bs=sc;best=tgt;}});
+return best;
+}
+function rowLink(tr){var a=Array.prototype.filter.call(tr.querySelectorAll('a[href]'),function(x){var h=x.getAttribute('href')||'';return h&&h.charAt(0)!='j'&&h!='/'&&!/logout|my_orders\.php$/.test(h);})[0];return a?a.href:'';}
+function clickLive(e){return new Promise(function(res){var done=false;var h=function(){if(done)return;done=true;IFR.removeEventListener('load',h);setTimeout(function(){patchWin();res();},700);};IFR.addEventListener('load',h);patchWin();try{e.click();}catch(x){}setTimeout(h,4000);});}
+function findYes(doc){var dl=doc.querySelector('.ui-dialog:not([style*="display: none"])');if(!dl)return null;return Array.prototype.filter.call(dl.querySelectorAll('button,input[type="button"],input[type="submit"],a'),function(b){return /(כן|אישור|אשר|מחק|בטל הזמנה)/.test(clean(b.value||b.textContent));})[0]||null;}
 function ordersView(){
 VIEW='orders';
 loading('טוען הזמנות…');
-withLogin('/my_orders.php').then(function(doc){
+withLogin('/my_orders.php').then(function(){return loadFrame('/my_orders.php');}).then(function(doc){
+patchWin();
 var w=shell();
 w.appendChild(el('div','h ctr','📋 ההזמנות שלי'));
 var list=parseOrders(doc);
 if(!list.length){var nc=doc.querySelector('.no-content');var c=el('div','c');c.appendChild(el('div','ttl',nc?clean(nc.textContent):'לא נמצאו הזמנות'));w.appendChild(c);}
-list.forEach(function(o){orderCard(o,w,false,true);});
+list.forEach(function(o){var card=orderCard(o,w,false,true);o.cancel=findCancel(o.tr,false);o.link=o.cancel?'':rowLink(o.tr);
+if(o.cancel||o.link){var db=btn('🗑 מחק הזמנה','del',function(){ask('למחוק את ההזמנה?',o.fields.map(function(f){return f[1];}).join(' · '),null,'מחק','ביטול').then(function(ok){if(ok)delOrder(o);});});card.appendChild(db);}});
 var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));w.appendChild(a);
 }).catch(function(e){say(String(e)).then(back);});
+}
+function delOrder(o){
+loading('מוחק הזמנה…');ALERTS=[];
+var p=o.cancel?clickLive(o.cancel):loadFrame(o.link).then(function(doc){patchWin();var c=findCancel(doc.body,true)||findCancel(doc.body,false);if(!c)throw 'לא מצאתי כפתור ביטול בדף של ההזמנה. אפשר לבטל דרך "פתח באתר".';return clickLive(c);});
+p.then(function(){var y=findYes(IFR.contentDocument);if(y)return clickLive(y);})
+.then(function(){return getDoc('/my_orders.php');})
+.then(function(d2){var still=parseOrders(d2).some(function(x){return x.text==o.text;});
+say((still?'נראה שההזמנה לא נמחקה. בדוק ב"פתח באתר".':'✅ ההזמנה נמחקה')+(ALERTS.length?'\n'+ALERTS.join('\n'):'')).then(ordersView);})
+.catch(function(e){say(String(e)).then(ordersView);});
 }
 var SCH=null,IFR=null,SV={car:'',date:'',hour:'',res:null,busy:false};
 function schFrame(){if(IFR&&IFR.parentNode)return IFR;IFR=el('iframe');IFR.setAttribute('sandbox','allow-same-origin allow-scripts allow-forms');IFR.style.cssText='position:fixed;left:0;top:0;width:1100px;height:6000px;border:0;opacity:0.01;pointer-events:none;z-index:1';d.body.appendChild(IFR);return IFR;}
