@@ -168,7 +168,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='26.10-7';
+var VER='26.10-8';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -195,6 +195,8 @@ function el(t,c,x){var e=d.createElement(t);if(c)e.className=c;if(x!=null)e.text
 function btn(x,c,f){var b=el('button',c,x);b.type='button';b.onclick=f;return b;}
 function sel(list,val,f){var s=el('select');list.forEach(function(o){var op=el('option',null,o.t);op.value=o.v;s.appendChild(op);});s.value=val;s.onchange=function(){f(s.value);};return s;}
 function fld(lbl,inp){var l=el('label','f');if(lbl)l.appendChild(el('span',null,lbl));l.appendChild(inp);return l;}
+var DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+function dayName(x){if(!x)return '';var D=typeof x=='string'?mk(x,'12:00'):x;return DAYS[D.getDay()];}
 function fdate(x){if(!x)return '';var a=x.split('-');return a[2]+'/'+a[1]+'/'+a[0].slice(2);}
 function dateIn(v,f){var w=el('div','dw');var sp=el('span',null,fdate(v));var i=el('input');i.type='date';i.value=v;i.onchange=function(){if(i.value){sp.textContent=fdate(i.value);f(i.value);}};w.appendChild(sp);w.appendChild(i);w.inp=i;w.setV=function(x){i.value=x;sp.textContent=fdate(x);};return w;}
 function seg(items,isOn,onTap){var s=el('div','seg');items.forEach(function(it){s.appendChild(btn(it[0],isOn(it[1])?'on':'',function(){onTap(it[1]);}));});return s;}
@@ -282,8 +284,8 @@ sdI.inp.min=iso(new Date());edI.inp.min=S.sd;
 sdI.inp.qbStep=30;edI.inp.qbStep=30;
 drag(sdI.inp,function(n){var h=dur();var t=mk(S.sd,S.st);t.setDate(t.getDate()+n);S.sd=iso(t);clampStart();setDur(h>0?h:2);sdI.setV(S.sd);edI.setV(S.ed);});
 drag(edI.inp,function(n){var t=mk(S.ed,S.et);t.setDate(t.getDate()+n);if(t<=mk(S.sd,S.st))return;S.ed=iso(t);edI.setV(S.ed);});
-r.appendChild(fld('קבלה ↕',sdI));
-r.appendChild(fld('החזרה ↕',edI));
+r.appendChild(fld('מ: '+dayName(S.sd)+' ↕',sdI));
+r.appendChild(fld('עד: '+dayName(S.ed)+' ↕',edI));
 c.appendChild(r);
 r=el('div','r');
 var stS=sel(startOpts(),S.st,function(v){keepDur(function(){S.st=v;});});
@@ -504,8 +506,8 @@ function dtTxt(D){return D?p2(D.getDate())+'/'+p2(D.getMonth()+1)+'/'+String(D.g
 function myOrderCard(o,parent,hl){
 var c=el('div','c ord neu'+(hl?' hl':''));
 var hd=el('div','hrow');hd.style.margin='0 0 8px';hd.appendChild(el('div','h',o.dest||'הזמנה'));if(o.status)hd.appendChild(el('span','stt',o.status));c.appendChild(hd);
-var tr=el('div','bkt');var a=el('div','tv');a.appendChild(el('small','od',o.s?fdate(iso(o.s)):''));a.appendChild(el('b',null,o.s?hm(o.s):o.sTxt));a.appendChild(el('small',null,'קבלה'));
-var z=el('div','tv');z.appendChild(el('small','od',o.e?fdate(iso(o.e)):''));z.appendChild(el('b',null,o.e?hm(o.e):o.eTxt));z.appendChild(el('small',null,'החזרה'));
+var tr=el('div','bkt');var a=el('div','tv');a.appendChild(el('small','od',o.s?fdate(iso(o.s)):''));a.appendChild(el('b',null,o.s?hm(o.s):o.sTxt));a.appendChild(el('small',null,o.s?'מ: '+dayName(o.s):'קבלה'));
+var z=el('div','tv');z.appendChild(el('small','od',o.e?fdate(iso(o.e)):''));z.appendChild(el('b',null,o.e?hm(o.e):o.eTxt));z.appendChild(el('small',null,o.e?'עד: '+dayName(o.e):'החזרה'));
 tr.appendChild(a);tr.appendChild(el('div','ar'));tr.appendChild(z);c.appendChild(tr);
 var cb=el('div','carbox'+(o.carName?'':' none'));cb.appendChild(el('div','sub',o.carName?'הרכב ששובץ':'רכב'));cb.appendChild(el('div','carname',o.carName||'טרם שובץ'));if(o.carPlate)cb.appendChild(el('div','cplate','('+o.carPlate+')'));c.appendChild(cb);
 var meta=[o.purpose,o.id?'הזמנה '+o.id:''].filter(Boolean).join(' · ');if(meta)c.appendChild(el('div','lg',meta));
