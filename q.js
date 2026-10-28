@@ -15,15 +15,21 @@ if(!PR){var c0=ld('qbc',null);PR={list:c0&&c0.c?[{u:c0.u,c:c0.c}]:[],cur:0};sv('
 function cur(){return PR.list[PR.cur]||null;}
 function addUser(){return ask(PR.list.length?'הוספת משתמש':'כניסה לאתר הרכבים','הפרטים נשמרים רק בטלפון',[{label:'שם משתמש'},{label:'קוד כניסה',type:'password'}],'שמור והתחבר','ביטול').then(function(v){if(!v||!v[1])return null;PR.list.push({u:v[0].trim(),c:v[1].trim()});PR.cur=PR.list.length-1;sv('qbu',PR);return cur();});}
 function creds(){var c=cur();return c?Promise.resolve(c):addUser();}
-function doLogin(lf){
-return creds().then(function(c){
-if(!c)throw 'הכניסה בוטלה';
+function doLoginWith(lf,c){
 Array.prototype.forEach.call(lf.querySelectorAll('input'),function(i){var t=(i.type||'text').toLowerCase();if(t=='password')i.value=c.c;else if(t=='text'||t=='tel'||t=='number'||t=='email')i.value=c.u;});
 var loc=lf.querySelector('[name="location"]');if(loc)loc.value='/order.php';
 var body=ser(lf);body.append('front_login_btn','כניסה');
 return fetch(lf.getAttribute('action')||'/login.php',{method:'POST',body:body,credentials:'same-origin'}).then(function(){return getDoc('/order.php');});
-});
 }
+function doLogin(lf){return creds().then(function(c){if(!c)throw 'הכניסה בוטלה';return doLoginWith(lf,c);});}
+function loginAs(p){return fetch('/logout.php',{credentials:'same-origin'}).catch(function(){}).then(function(){return getDoc('/order.php');}).then(function(doc){var lf=loginForm(doc);if(!lf)return doc;return doLoginWith(lf,p);});}
+var ORD_ALL=false,RET=null;
+function allOrders(){
+var res=[],orig=PR.cur,chain=Promise.resolve();
+PR.list.forEach(function(p,i){chain=chain.then(function(){return loginAs(p);}).then(function(){return getDoc('/my_orders.php');}).then(function(d2){if(loginForm(d2))return;parseMyOrders(d2).forEach(function(o){o.owner=i;res.push(o);});});});
+return chain.then(function(){return loginAs(PR.list[orig]);}).then(function(){res.sort(function(a,b){return (a.s||0)-(b.s||0);});return res;});
+}
+function asOwner(o,fn){if(o.owner==null||o.owner==PR.cur)return fn();loading('מתחבר כ'+PR.list[o.owner].u+'…');PR.cur=o.owner;sv('qbu',PR);STALE=true;loginAs(cur()).then(fn,function(e){say(String(e)).then(ordersView);});}
 function withLogin(url){return getDoc(url).then(function(doc){var lf=loginForm(doc);if(!lf)return doc;return doLogin(lf).then(function(){return getDoc(url);}).then(function(doc2){if(loginForm(doc2)){var bad=cur();PR.list.splice(PR.cur,1);PR.cur=0;sv('qbu',PR);throw 'הכניסה נכשלה עבור '+(bad?bad.u:'המשתמש')+' - שם המשתמש או הקוד שגויים. פתח שוב והזן אותם מחדש';}return doc2;});});}
 var WHO='',FIXED=false;
 function relogin(){
@@ -43,6 +49,7 @@ Array.prototype.forEach.call(form.querySelectorAll('input[type="radio"][name^="g
 if(!DEST.some(function(x){return x.v==S.dest;}))S.dest='';
 var wl=f.ownerDocument.querySelector('[id="user-welcome"] div');WHO=wl?clean(wl.textContent):'';
 if(WHO&&cur()&&cur().u&&WHO.indexOf(cur().u)<0&&!FIXED){FIXED=true;relogin();return;}
+if(RET=='orders'){RET=null;ordersView();return;}
 draw();
 }
 var F=ld('qbf',['ראש העין','אשדוד','גדרה']),P={};
@@ -99,6 +106,11 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .livet{font-size:12px;font-weight:800;color:var(--a)}'+
 '@keyframes qbp{from{opacity:1;transform:scale(1)}to{opacity:.25;transform:scale(1.35)}}'+
 '.qbx .okh{font-size:17px;font-weight:800;text-align:center;margin:4px 0 12px;color:rgb(22,130,60)}'+
+'.qbx .ord.neu.u-blue{border:2px solid rgb(37,99,235)!important}'+
+'.qbx .ord.neu.u-pink{border:2px solid rgb(236,72,153)!important}'+
+'.qbx .uown{display:inline-block;font-size:12px;font-weight:800;padding:3px 12px;border-radius:999px;margin:0 0 8px;color:white}'+
+'.qbx .u-blue .uown{background:rgb(37,99,235)}'+
+'.qbx .u-pink .uown{background:rgb(236,72,153)}'+
 '.qbx button.del0{background:rgb(254,226,226)!important;color:rgb(185,28,28)!important;font-weight:700}'+
 '.qbx .stt{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--s);color:var(--a);font-weight:700}'+
 '.qbx button.del{display:block!important;margin:12px auto 0!important;background:rgb(254,226,226)!important;color:rgb(185,28,28)!important;font-weight:700}'+
@@ -174,7 +186,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='28.10-2';
+var VER='28.10-3';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -221,7 +233,8 @@ if(cancel)a.appendChild(btn(cancel,null,function(){m.remove();res(null);}));
 c.appendChild(a);m.appendChild(c);box.appendChild(m);
 });}
 function say(t){return ask('',t,null,'סגור',null);}
-function back(){if(form)draw();else box.remove();}
+var STALE=false;
+function back(){if(STALE){STALE=false;relogin();return;}if(form)draw();else box.remove();}
 function shell(){
 box.innerHTML='';box.appendChild(el('style',null,css));
 var h=el('div','hdr');var ttl=el('b',null,'הזמנת רכב');ttl.style.cursor='pointer';ttl.style.webkitUserSelect='none';ttl.style.userSelect='none';ttl.style.webkitTouchCallout='none';
@@ -235,7 +248,9 @@ h.appendChild(ttl);
 var hb=el('div','hb');hb.appendChild(VIEW=='sch'?btn('הזמנה',null,back):btn('סידור',null,scheduleView));hb.appendChild(btn('ההזמנות שלי',null,ordersView));hb.appendChild(btn('✕',null,function(){box.remove();}));h.appendChild(hb);
 box.appendChild(h);
 var us=el('div','users');
-PR.list.forEach(function(p,i){us.appendChild(btn('👤 '+(p.u||'משתמש'),i==PR.cur?((p.u||'').indexOf('ניבה')>=0?'pk':'on'):'',function(){switchUser(i);}));});
+var allOn=VIEW=='orders'&&ORD_ALL;
+PR.list.forEach(function(p,i){us.appendChild(btn('👤 '+(p.u||'משתמש'),(i==PR.cur&&!allOn)?((p.u||'').indexOf('ניבה')>=0?'pk':'on'):'',function(){if(VIEW=='orders'){ORD_ALL=false;if(i==PR.cur){ordersView();return;}RET='orders';}switchUser(i);}));});
+if(VIEW=='orders'&&PR.list.length>1)us.appendChild(btn('הכל',allOn?'on':'',function(){ORD_ALL=true;ordersView();}));
 us.appendChild(btn('+ משתמש',null,function(){addUser().then(function(c){if(c)relogin();});}));
 box.appendChild(us);
 var w=el('div','wrap');box.appendChild(w);return w;
@@ -520,17 +535,20 @@ parent.appendChild(c);return c;
 function ordersView(){
 VIEW='orders';
 var MY=null;
-loading('טוען הזמנות…');
-withLogin('/my_orders.php').then(function(){return loadFrame('/my_orders.php');}).then(function(doc){
-MY=parseMyOrders(doc);
-if(!doc.querySelector('.orders_row')&&!doc.querySelector('.no-content'))throw 'skip';
+var all=ORD_ALL&&PR.list.length>1;
+loading(all?'טוען את כל ההזמנות…':'טוען הזמנות…');
+var src=all?allOrders():withLogin('/my_orders.php').then(function(){return loadFrame('/my_orders.php');}).then(function(doc){if(!doc.querySelector('.orders_row')&&!doc.querySelector('.no-content'))throw 'skip';return parseMyOrders(doc);});
+src.then(function(list){
+MY=list;
 var w=shell();
-w.appendChild(el('div','h ctr','ההזמנות שלי'));
+w.appendChild(el('div','h ctr',all?'כל ההזמנות':'ההזמנות שלי'));
 if(!MY.length){var c0=el('div','c');c0.appendChild(el('div','ttl','אין הזמנות'));w.appendChild(c0);}
-MY.forEach(function(o){var card=myOrderCard(o,w,false);var ac=el('div','acts');ac.style.marginTop='12px';
-if(o.e)ac.appendChild(btn('+2',null,function(){var ne=new Date(o.e.getTime()+2*3600000);ask('להאריך בשעתיים?','החזרה חדשה: '+dtTxt(ne),null,'הארך','ביטול').then(function(ok){if(ok)editOrder(o,ne);});}));
-ac.appendChild(btn('עריכת הזמנה',null,function(){editFull(o);}));
-ac.appendChild(btn('מחק','del0',function(){ask('למחוק את ההזמנה?',(o.dest||'')+'\n'+dtTxt(o.s)+' עד '+dtTxt(o.e),null,'מחק','ביטול').then(function(ok){if(ok)deleteOrder(o);});}));
+MY.forEach(function(o){var card=myOrderCard(o,w,false);
+if(all&&o.owner!=null){var nm=PR.list[o.owner].u||'';card.classList.add(/ניבה/.test(nm)?'u-pink':'u-blue');card.insertBefore(el('div','uown',nm),card.firstChild);}
+var ac=el('div','acts');ac.style.marginTop='12px';
+if(o.e)ac.appendChild(btn('+2',null,function(){var ne=new Date(o.e.getTime()+2*3600000);ask('להאריך בשעתיים?','החזרה חדשה: '+dtTxt(ne),null,'הארך','ביטול').then(function(ok){if(ok)asOwner(o,function(){editOrder(o,ne);});});}));
+ac.appendChild(btn('עריכת הזמנה',null,function(){asOwner(o,function(){editFull(o);});}));
+ac.appendChild(btn('מחק','del0',function(){ask('למחוק את ההזמנה?',(o.dest||'')+'\n'+dtTxt(o.s)+' עד '+dtTxt(o.e),null,'מחק','ביטול').then(function(ok){if(ok)asOwner(o,function(){deleteOrder(o);});});}));
 card.appendChild(ac);});
 var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));
 w.appendChild(a);
