@@ -93,6 +93,12 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .ord.neu .acts button{background:rgb(241,243,246)!important;color:rgb(40,46,56)!important}'+
 '.qbx .ord.neu .acts button.on{background:rgb(40,46,56)!important;color:white!important}'+
 '.qbx .ord.neu .acts button.del0{background:rgb(254,242,242)!important;color:rgb(185,28,28)!important}'+
+'.qbx .ord.neu.live{border:2px solid var(--a)!important;box-shadow:0 4px 14px var(--sh)!important}'+
+'.qbx .lvw{display:flex;align-items:center;gap:6px}'+
+'.qbx .livedot{width:10px;height:10px;border-radius:999px;background:var(--a);box-shadow:0 0 0 4px var(--s);animation:qbp 0.9s ease-in-out infinite alternate}'+
+'.qbx .livet{font-size:12px;font-weight:800;color:var(--a)}'+
+'@keyframes qbp{from{opacity:1;transform:scale(1)}to{opacity:.25;transform:scale(1.35)}}'+
+'.qbx .okh{font-size:17px;font-weight:800;text-align:center;margin:4px 0 12px;color:rgb(22,130,60)}'+
 '.qbx button.del0{background:rgb(254,226,226)!important;color:rgb(185,28,28)!important;font-weight:700}'+
 '.qbx .stt{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--s);color:var(--a);font-weight:700}'+
 '.qbx button.del{display:block!important;margin:12px auto 0!important;background:rgb(254,226,226)!important;color:rgb(185,28,28)!important;font-weight:700}'+
@@ -168,7 +174,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='26.10-9';
+var VER='28.10-1';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -500,8 +506,11 @@ return o;}).filter(function(o){return o.id||o.s;});
 }
 function dtTxt(D){return D?p2(D.getDate())+'/'+p2(D.getMonth()+1)+'/'+String(D.getFullYear()).slice(2)+' '+hm(D):'';}
 function myOrderCard(o,parent,hl){
-var c=el('div','c ord neu'+(hl?' hl':''));
-var hd=el('div','hrow');hd.style.margin='0 0 8px';hd.appendChild(el('div','h',o.dest||'הזמנה'));c.appendChild(hd);
+var nw=new Date();var live=o.s&&o.e&&o.s<=nw&&nw<o.e;
+var c=el('div','c ord neu'+(hl?' hl':'')+(live?' live':''));
+var hd=el('div','hrow');hd.style.margin='0 0 8px';hd.appendChild(el('div','h',o.dest||'הזמנה'));
+if(live){var lv=el('div','lvw');lv.appendChild(el('span','livedot'));lv.appendChild(el('span','livet','עכשיו'));hd.appendChild(lv);}
+c.appendChild(hd);
 var tr=el('div','bkt');var a=el('div','tv');a.appendChild(el('small','od',o.s?fdate(iso(o.s)):''));a.appendChild(el('b',null,o.s?hm(o.s):o.sTxt));a.appendChild(el('small',null,o.s?'מ: '+dayName(o.s):'קבלה'));
 var z=el('div','tv');z.appendChild(el('small','od',o.e?fdate(iso(o.e)):''));z.appendChild(el('b',null,o.e?hm(o.e):o.eTxt));z.appendChild(el('small',null,o.e?'עד: '+dayName(o.e):'החזרה'));
 tr.appendChild(a);tr.appendChild(el('div','ar'));tr.appendChild(z);c.appendChild(tr);
@@ -882,18 +891,23 @@ result(kind,title,ms.map(function(o){return o.t;}),dn,when,car,match,html);
 }
 function result(kind,title,list,dn,when,car,match,html){
 var w=shell();
+if(match&&match.my&&kind!='bad'){
+var hd=el('div','okh',(kind=='ok'?'✅ ':'')+title);w.appendChild(hd);
+myOrderCard(match,w,false);
+if(kind!='ok')list.forEach(function(t){w.appendChild(el('div','msg',t));});
+}else{
 var c=el('div','c res '+kind);
 c.appendChild(el('div','big',kind=='ok'?'✅':kind=='bad'?'❌':'ℹ️'));
 c.appendChild(el('div','ttl',title));
 c.appendChild(el('div','sub',dn+' · '+when));
 carBox(c,car,kind=='ok'?'טרם שובץ':'לא שובץ רכב');
-if(!car&&kind=='ok')c.appendChild(el('div','lg','הסדרן ישבץ רכב בהמשך - בדוק ב"ההזמנות שלי"'));
 list.forEach(function(t){c.appendChild(el('div','msg',t));});
 if(!list.length&&!match&&kind!='ok')c.appendChild(el('div','msg','האתר לא החזיר הודעה. בדוק ב"ההזמנות שלי".'));
 w.appendChild(c);
-if(match){w.appendChild(el('div','sub','פרטי ההזמנה במערכת'));if(match.my)myOrderCard(match,w,true);else orderCard(match,w,true,false);}
+if(match&&!match.my){w.appendChild(el('div','sub','פרטי ההזמנה במערכת'));orderCard(match,w,true,false);}
+}
 var a=el('div','acts');
-a.appendChild(btn('📋 ההזמנות שלי','on',ordersView));
+a.appendChild(btn('ההזמנות שלי','on',ordersView));
 a.appendChild(btn('הזמנה נוספת',null,back));
 if(html)a.appendChild(btn('דף האתר המקורי',null,function(){d.open();d.write(html);d.close();}));
 w.appendChild(a);
