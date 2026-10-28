@@ -174,7 +174,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='28.10-1';
+var VER='28.10-2';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -529,7 +529,7 @@ w.appendChild(el('div','h ctr','ההזמנות שלי'));
 if(!MY.length){var c0=el('div','c');c0.appendChild(el('div','ttl','אין הזמנות'));w.appendChild(c0);}
 MY.forEach(function(o){var card=myOrderCard(o,w,false);var ac=el('div','acts');ac.style.marginTop='12px';
 if(o.e)ac.appendChild(btn('+2',null,function(){var ne=new Date(o.e.getTime()+2*3600000);ask('להאריך בשעתיים?','החזרה חדשה: '+dtTxt(ne),null,'הארך','ביטול').then(function(ok){if(ok)editOrder(o,ne);});}));
-ac.appendChild(btn('עריכת הזמנה',null,function(){pickReturn(o);}));
+ac.appendChild(btn('עריכת הזמנה',null,function(){editFull(o);}));
 ac.appendChild(btn('מחק','del0',function(){ask('למחוק את ההזמנה?',(o.dest||'')+'\n'+dtTxt(o.s)+' עד '+dtTxt(o.e),null,'מחק','ביטול').then(function(ok){if(ok)deleteOrder(o);});}));
 card.appendChild(ac);});
 var a=el('div','acts');a.appendChild(btn('הזמנה חדשה','on',back));a.appendChild(btn('פתח באתר',null,function(){location.href='/my_orders.php';}));
@@ -568,6 +568,64 @@ return clickLive(sb);
 }).then(function(){var y=findYes(IFR.contentDocument);if(y)return clickLive(y);})
 .then(function(){var ms=afterMsgs();return getDoc('/my_orders.php').then(function(d2){var n=parseMyOrders(d2).filter(function(x){return x.id==o.id;})[0];
 var ok=n&&n.e&&Math.abs(n.e-ne)<60000;say((ok?'✅ ההזמנה עודכנה - החזרה ב-'+dtTxt(n.e):'ההזמנה לא עודכנה'+(n&&n.e?' (החזרה עדיין '+dtTxt(n.e)+')':''))+(ms.length?'\n'+ms.join('\n'):'')).then(ordersView);});})
+.catch(function(e){say(String(e)).then(ordersView);});
+}
+function fromSite(x){var a=(x||'').split('-');return a.length==3?a[2]+'-'+a[1]+'-'+a[0]:'';}
+function vOf(doc,n){var e=doc.querySelector('[name="'+n+'"]');return e?e.value:'';}
+function editFull(o){
+loading('טוען את ההזמנה לעריכה…');
+openEdit(o).then(function(doc){
+if(!doc.querySelector('[name="end_time"]'))throw 'לא נמצא טופס עריכה בדף';
+var E={o:o,sd:fromSite(vOf(doc,'start_date'))||(o.s?iso(o.s):''),st:vOf(doc,'start_time')||(o.s?hm(o.s):''),ed:fromSite(vOf(doc,'end_date'))||(o.e?iso(o.e):''),et:vOf(doc,'end_time')||(o.e?hm(o.e):''),car:vOf(doc,'req_car_id')||'0',P:{}};
+GRPS.forEach(function(g){var c=doc.querySelector('input[name="grp_val_'+g.id+'"]:checked');E.P[g.id]=c?Number(c.value):-1;});
+E.cars=Array.prototype.map.call((doc.querySelector('[name="req_car_id"]')||{options:[]}).options,function(op){return {v:op.value,t:clean(op.text)};}).filter(function(x){return x.v!=='-1'&&x.v!=='';});
+if(!E.cars.length)E.cars=CARS;
+editDraw(E);
+}).catch(function(e){say(String(e)).then(ordersView);});
+}
+function topts(t){var l=TO.slice();if(t&&!TO.some(function(x){return x.v==t;}))l.unshift({v:t,t:t});return l;}
+function editDraw(E){
+VIEW='edit';
+var w=shell();
+var c=el('div','c');
+c.appendChild(el('div','h','עריכת הזמנה'+(E.o.dest?' · '+E.o.dest:'')));
+var r=el('div','r');
+r.appendChild(fld('מ: '+dayName(E.sd),dateIn(E.sd,function(v){var h=(mk(E.ed,E.et)-mk(E.sd,E.st))/3600000;E.sd=v;if(h>0){var ne=new Date(mk(E.sd,E.st).getTime()+h*3600000);E.ed=iso(ne);E.et=hm(ne);}editDraw(E);})));
+r.appendChild(fld('משעה',sel(topts(E.st),E.st,function(v){var h=(mk(E.ed,E.et)-mk(E.sd,E.st))/3600000;E.st=v;if(h>0){var ne=new Date(mk(E.sd,E.st).getTime()+h*3600000);E.ed=iso(ne);E.et=hm(ne);}editDraw(E);})));
+c.appendChild(r);
+r=el('div','r');
+r.appendChild(fld('עד: '+dayName(E.ed),dateIn(E.ed,function(v){E.ed=v;editDraw(E);})));
+r.appendChild(fld('עד שעה',sel(topts(E.et),E.et,function(v){E.et=v;editDraw(E);})));
+c.appendChild(r);
+var q2=el('div','ch');q2.style.justifyContent='center';
+[1,2,3,4].forEach(function(h){q2.appendChild(btn('+'+h,null,function(){var ne=new Date(mk(E.ed,E.et).getTime()+h*3600000);E.ed=iso(ne);E.et=hm(ne);editDraw(E);}));});
+c.appendChild(q2);
+if(mk(E.ed,E.et)<=mk(E.sd,E.st))c.appendChild(el('div','warn','שעת ההחזרה חייבת להיות אחרי שעת הקבלה'));
+w.appendChild(c);
+if(GRPS.length){c=el('div','c');var ch=el('div','ch');
+GRPS.forEach(function(g){var v=E.P[g.id]==null?-1:E.P[g.id];ch.appendChild(btn((v==1?'✓ ':v==0?'✕ ':'')+short(g.t),v==1?'g':v==0?'x':'n',function(){E.P[g.id]=v==-1?1:v==1?0:-1;editDraw(E);}));});
+c.appendChild(ch);
+if(E.cars.length){var rr=el('div','r');rr.style.margin='4px 0 0';rr.appendChild(fld('רכב מסוים',sel(E.cars,E.car,function(v){E.car=v;editDraw(E);})));c.appendChild(rr);}
+w.appendChild(c);}
+var a=el('div','acts');a.appendChild(btn('שמור שינויים','on',function(){saveEdit(E);}));a.appendChild(btn('ביטול',null,ordersView));w.appendChild(a);
+}
+function saveEdit(E){
+var ns=mk(E.sd,E.st),ne=mk(E.ed,E.et);if(ne<=ns){say('שעת ההחזרה חייבת להיות אחרי שעת הקבלה');return;}
+loading('שומר שינויים…');ALERTS=[];
+var doc=IFR.contentDocument;
+var p=(doc&&doc.querySelector('[name="end_time"]'))?Promise.resolve(doc):openEdit(E.o);
+p.then(function(doc){
+jset(doc,'start_date',site(E.sd));jset(doc,'start_time',E.st);jset(doc,'end_date',site(E.ed));jset(doc,'end_time',E.et);
+jset(doc,'req_car_id',E.car);
+GRPS.forEach(function(g){var v=E.P[g.id]==null?-1:E.P[g.id];Array.prototype.forEach.call(doc.querySelectorAll('input[name="grp_val_'+g.id+'"]'),function(rd){rd.checked=Number(rd.value)==v;});});
+var f=doc.querySelector('[name="end_time"]').form;
+var sb=Array.prototype.filter.call((f||doc).querySelectorAll('input[type="submit"],button[type="submit"],button:not([type]),input[type="button"]'),function(b){var t=clean(b.value||b.textContent);return !badCtl(b)&&t&&!/מחק|ביטול|בטל|סגור|בחר|בחירה/.test(t);})[0];
+if(!sb)throw 'לא מצאתי כפתור שמירה בדף העריכה';
+return clickLive(sb);
+}).then(function(){var y=findYes(IFR.contentDocument);if(y)return clickLive(y);})
+.then(function(){var ms=afterMsgs();return getDoc('/my_orders.php').then(function(d2){var n=parseMyOrders(d2).filter(function(x){return x.id==E.o.id;})[0];
+var ok=n&&n.s&&n.e&&Math.abs(n.s-ns)<60000&&Math.abs(n.e-ne)<60000;
+say((ok?'✅ ההזמנה עודכנה':'ההזמנה לא עודכנה כמו שביקשת')+(n&&n.s?'\nכעת: '+dtTxt(n.s)+' עד '+dtTxt(n.e):'')+(ms.length?'\n'+ms.join('\n'):'')).then(ordersView);});})
 .catch(function(e){say(String(e)).then(ordersView);});
 }
 function deleteOrder(o){
