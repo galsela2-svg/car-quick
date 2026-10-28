@@ -106,6 +106,16 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .livet{font-size:12px;font-weight:800;color:var(--a)}'+
 '@keyframes qbp{from{opacity:1;transform:scale(1)}to{opacity:.25;transform:scale(1.35)}}'+
 '.qbx .okh{font-size:17px;font-weight:800;text-align:center;margin:4px 0 12px;color:rgb(22,130,60)}'+
+'.qbx .tbl{padding:12px 0 4px}'+
+'.qbx .tbl .h{padding:0 14px}'+
+'.qbx .trow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid rgb(238,240,244);cursor:pointer}'+
+'.qbx .trow.free{background:rgb(248,249,251)}'+
+'.qbx .trow.free .tct,.qbx .trow.free .twn{color:rgb(150,156,166);font-weight:500}'+
+'.qbx .tcar{flex:1 1 0;min-width:0;text-align:right}'+
+'.qbx .tct{font-weight:700;font-size:15px}'+
+'.qbx .tcp{font-size:12px;color:rgb(130,138,150)}'+
+'.qbx .twho{flex:1 1 0;min-width:0;text-align:left}'+
+'.qbx .twn{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
 '.qbx .ord.neu{position:relative;padding:12px 14px;margin:0 0 10px}'+
 '.qbx .ord.neu .bkt{padding:0 0 6px;margin:0 0 6px;gap:8px}'+
 '.qbx .ord.neu .tv b{font-size:18px}'+
@@ -197,7 +207,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='28.10-4';
+var VER='28.10-5';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -843,7 +853,7 @@ var base=SCH,X=SCH.date;if(!X)return Promise.resolve();
 SV.merging=true;
 return gotoDate(addD(X,1)).then(function(doc){mergeFrom(base,parseSchedule(doc),X);}).catch(function(){})
 .then(function(){return gotoDate(addD(X,-1));}).then(function(doc){mergeFrom(base,parseSchedule(doc),X);}).catch(function(){})
-.then(function(){SCH=base;SV.merging=false;if(VIEW=='sch'&&SV.date==X&&SV.res)schDraw();if(SV.pending){SV.pending=false;showSch();}});
+.then(function(){SCH=base;SV.merging=false;if(VIEW=='sch'&&SV.date==X&&!SV.pending)schDraw();if(SV.pending){SV.pending=false;showSch();}});
 }
 function withGaps(bars){var out=[];bars.forEach(function(b,i){out.push(b);var nx=bars[i+1];if(nx&&nx.s-b.e>=5/60)out.push({gap:true,s:b.e,e:nx.s,sT:b.eT,eT:nx.sT,t:'לא מוזמן'});});return out;}
 function bookingCard(b,parent){
@@ -867,7 +877,7 @@ function scheduleView(){
 VIEW='sch';
 if(!SV.date)SV.date=iso(new Date());
 loading('טוען סידור…');
-withLogin('/schedule.php').then(function(){return loadFrame('/schedule.php');}).then(function(){return waitRows(15000);}).then(function(doc){SCH=parseSchedule(doc);if(!SCH.rows.length)throw 'לא הצלחתי לקרוא את רשימת הרכבים בסידור'+diag(doc,'');schDraw();})
+withLogin('/schedule.php').then(function(){return loadFrame('/schedule.php');}).then(function(){return waitRows(15000);}).then(function(doc){SCH=parseSchedule(doc);if(!SCH.rows.length)throw 'לא הצלחתי לקרוא את רשימת הרכבים בסידור'+diag(doc,'');if(SCH.date==iso(new Date()))TODAY=SCH;schDraw();if(!SCH.merged){SCH.merged=true;mergeAdj();}})
 .catch(function(e){SCH=null;ask('',String(e),null,'סגור','הצג את הדף שנטען').then(function(ok){schDraw();if(ok===null)showFrame();});});
 }
 function showFrame(){
@@ -878,6 +888,25 @@ var x=d.createElement('button');x.textContent='✕ סגור תצוגה';
 x.style.cssText='position:fixed;bottom:24px;left:20px;right:20px;z-index:2147483647;background:black;color:white;border:0;border-radius:999px;padding:14px 22px;font-size:17px';
 x.onclick=function(){IFR.style.cssText=prev;x.remove();};
 d.body.appendChild(x);
+}
+var TODAY=null;
+function nowTable(w){
+var T=TODAY;if(!T||T.date!=iso(new Date()))return;
+var nw=new Date(),nh=nw.getHours()+nw.getMinutes()/60;
+var c=el('div','c tbl');
+c.appendChild(el('div','h','מי עם הרכבים עכשיו · '+hm(nw)));
+var rows=T.rows.slice().sort(function(a,b){return (Number(a.num)||0)-(Number(b.num)||0);});
+rows.forEach(function(x){
+var on=x.bars.filter(function(b){return !b.gap&&b.s<=nh&&nh<b.e;})[0];
+var r=el('div','trow'+(on?'':' free'));
+var a=el('div','tcar');a.appendChild(el('div','tct',carTitle(x)));if(x.plate)a.appendChild(el('div','tcp',x.plate));r.appendChild(a);
+var b=el('div','twho');
+if(on){b.appendChild(el('div','twn',on.t));b.appendChild(el('div','tcp','עד '+(on.eDay&&on.eDay!=T.date?fdate(on.eDay)+' ':'')+(on.eT||fmtT(on.e))));}
+else b.appendChild(el('div','twn','לא משובץ'));
+r.appendChild(b);
+r.onclick=function(){SV.car=x.key;SV.date=T.date;SV.hour='';SV.res=null;showSch();try{box.scrollTop=0;}catch(e){}};
+c.appendChild(r);});
+w.appendChild(c);
 }
 function schDraw(){
 VIEW='sch';
@@ -917,6 +946,7 @@ a.appendChild(btn('יום אחרי ›',null,function(){shiftDay(1);}));
 c.appendChild(a);
 w.appendChild(c);
 if(SV.res)SV.res(w);
+nowTable(w);
 if(SV.merging&&SV.res)w.appendChild(el('div','lg','בודק נסיעות שגולשות מהיום שלפני ומהיום שאחרי…'));
 var a2=el('div','acts');a2.appendChild(btn('חזרה להזמנה',null,back));a2.appendChild(btn('הסידור המקורי',null,function(){location.href='/schedule.php';}));w.appendChild(a2);
 }
@@ -925,7 +955,7 @@ if(SV.busy)return;
 if(SV.merging){SV.pending=true;SV.res=null;schDraw();return;}
 if(!SV.car&&!SV.hour){say('בחר רכב, או שעה כדי לראות את כל הרכבים');return;}
 SV.busy=true;schDraw();
-var p=SCH.date==SV.date?Promise.resolve(null):gotoDate(SV.date).then(function(doc){SCH=parseSchedule(doc);});
+var p=SCH.date==SV.date?Promise.resolve(null):gotoDate(SV.date).then(function(doc){SCH=parseSchedule(doc);if(SCH.date==iso(new Date()))TODAY=SCH;});
 p.then(function(){SV.busy=false;SV.res=renderSch;schDraw();if(!SCH.merged){SCH.merged=true;mergeAdj();}}).catch(function(e){SV.busy=false;schDraw();say(String(e));});
 }
 function renderSch(w){
