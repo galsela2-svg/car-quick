@@ -106,6 +106,17 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .livet{font-size:12px;font-weight:800;color:var(--a)}'+
 '@keyframes qbp{from{opacity:1;transform:scale(1)}to{opacity:.25;transform:scale(1.35)}}'+
 '.qbx .okh{font-size:17px;font-weight:800;text-align:center;margin:4px 0 12px;color:rgb(22,130,60)}'+
+'.qbx .ord.neu{position:relative;padding:12px 14px;margin:0 0 10px}'+
+'.qbx .ord.neu .bkt{padding:0 0 6px;margin:0 0 6px;gap:8px}'+
+'.qbx .ord.neu .tv b{font-size:18px}'+
+'.qbx .ord.neu .mid{flex:1 1 0;min-width:0;display:flex;align-items:center;gap:6px}'+
+'.qbx .dtok{flex:0 1 auto;min-width:0;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;padding:5px 12px;border-radius:999px;background:rgb(241,243,246);color:rgb(40,46,56)}'+
+'.qbx .ord.neu .carbox{margin:6px 0 0;padding:8px 10px}'+
+'.qbx .ord.neu .carname{font-size:16px}'+
+'.qbx .ord.neu .cplate{font-size:13px;margin-top:0}'+
+'.qbx .ord.neu .acts{margin-top:8px!important}'+
+'.qbx .ord.neu .acts button{padding:8px 14px!important;font-size:14px!important}'+
+'.qbx .lvw.abs{position:absolute;top:-9px;left:12px;background:white;padding:2px 8px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,.12)}'+
 '.qbx .ord.neu.u-blue{border:2px solid rgb(37,99,235)!important}'+
 '.qbx .ord.neu.u-pink{border:2px solid rgb(236,72,153)!important}'+
 '.qbx .uown{display:inline-block;font-size:12px;font-weight:800;padding:3px 12px;border-radius:999px;margin:0 0 8px;color:white}'+
@@ -186,7 +197,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='28.10-3';
+var VER='28.10-4';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -523,12 +534,11 @@ function dtTxt(D){return D?p2(D.getDate())+'/'+p2(D.getMonth()+1)+'/'+String(D.g
 function myOrderCard(o,parent,hl){
 var nw=new Date();var live=o.s&&o.e&&o.s<=nw&&nw<o.e;
 var c=el('div','c ord neu'+(hl?' hl':'')+(live?' live':''));
-var hd=el('div','hrow');hd.style.margin='0 0 8px';hd.appendChild(el('div','h',o.dest||'הזמנה'));
-if(live){var lv=el('div','lvw');lv.appendChild(el('span','livedot'));lv.appendChild(el('span','livet','עכשיו'));hd.appendChild(lv);}
-c.appendChild(hd);
+if(live){var lv=el('div','lvw abs');lv.appendChild(el('span','livedot'));lv.appendChild(el('span','livet','עכשיו'));c.appendChild(lv);}
 var tr=el('div','bkt');var a=el('div','tv');a.appendChild(el('small','od',o.s?fdate(iso(o.s)):''));a.appendChild(el('b',null,o.s?hm(o.s):o.sTxt));a.appendChild(el('small',null,o.s?'מ: '+dayName(o.s):'קבלה'));
 var z=el('div','tv');z.appendChild(el('small','od',o.e?fdate(iso(o.e)):''));z.appendChild(el('b',null,o.e?hm(o.e):o.eTxt));z.appendChild(el('small',null,o.e?'עד: '+dayName(o.e):'החזרה'));
-tr.appendChild(a);tr.appendChild(el('div','ar'));tr.appendChild(z);c.appendChild(tr);
+var mid=el('div','mid');mid.appendChild(el('div','ar'));if(o.dest)mid.appendChild(el('span','dtok',o.dest));mid.appendChild(el('div','ar'));
+tr.appendChild(a);tr.appendChild(mid);tr.appendChild(z);c.appendChild(tr);
 var cb=el('div','carbox'+(o.carName?'':' none'));cb.appendChild(el('div','carname',o.carName||'טרם שובץ'));if(o.carPlate)cb.appendChild(el('div','cplate','('+o.carPlate+')'));c.appendChild(cb);
 parent.appendChild(c);return c;
 }
