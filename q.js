@@ -210,7 +210,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='29.10-1';
+var VER='29.10-2';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -893,6 +893,15 @@ x.onclick=function(){IFR.style.cssText=prev;x.remove();};
 d.body.appendChild(x);
 }
 var TODAY=null;
+function carInfo(x){
+var model=x.model||'',plate=x.plate||'';
+if((!model||!plate)&&x.num!==''&&x.num!=null){
+var c=CARS.filter(function(k){var m=k.t.match(/^(\d+)\s/);return m&&m[1]==String(x.num);})[0];
+if(!c&&plate)c=CARS.filter(function(k){return plateOf(k.t)==plate;})[0];
+if(c){var pl=plateOf(c.t)||'';if(!plate)plate=pl;if(!model)model=clean(c.t.replace(/^\d+\s+/,'').replace(pl,'').replace(/\d+\s*מקומות/,''));}
+}
+return {model:model,plate:plate};
+}
 function nowTable(w){
 var T=TODAY;if(!T||T.date!=iso(new Date()))return;
 var nw=new Date(),nh=nw.getHours()+nw.getMinutes()/60;
@@ -908,8 +917,9 @@ if(!fr){fr=el('div','tfree');fr.appendChild(el('div','tfl','לא משובצים'
 fr.wr.appendChild(btn(x.num||x.model||'?','n tchip',pick(x)));return;}
 fr=null;
 var r=el('div','trow');
-var a=el('div','tcar');a.appendChild(el('div','tct',x.num?'רכב '+x.num:(x.model||'רכב')));
-var sub=[x.num?x.model:'',x.plate].filter(Boolean).join(' · ');if(sub)a.appendChild(el('div','tcp',sub));r.appendChild(a);
+var info=carInfo(x);
+var a=el('div','tcar');a.appendChild(el('div','tct',(x.num?'רכב '+x.num:'')+(x.num&&info.model?' · ':'')+(info.model||(x.num?'':'רכב'))));
+if(info.plate)a.appendChild(el('div','tcp',info.plate));r.appendChild(a);
 var b=el('div','twho');
 b.appendChild(el('div','twn',on.t));b.appendChild(el('div','tcp','עד '+(on.eDay&&on.eDay!=T.date?fdate(on.eDay)+' ':'')+(on.eT||fmtT(on.e))));
 r.appendChild(b);
