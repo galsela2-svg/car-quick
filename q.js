@@ -12,6 +12,7 @@ function loginForm(doc){var b=doc.querySelector('[name="front_login_btn"]');retu
 function ser(f){var b=new URLSearchParams();Array.prototype.forEach.call(f.elements,function(e){if(!e.name||e.disabled)return;var t=(e.type||'').toLowerCase();if(t=='submit'||t=='button'||t=='reset'||t=='file')return;if((t=='checkbox'||t=='radio')&&!e.checked)return;b.append(e.name,e.value);});return b;}
 var PR=ld('qbu',null);
 if(!PR){var c0=ld('qbc',null);PR={list:c0&&c0.c?[{u:c0.u,c:c0.c}]:[],cur:0};sv('qbu',PR);}
+(function(){var gi=-1;PR.list.forEach(function(p,i){if(gi<0&&clean(p.u)=='גל')gi=i;});if(gi<0&&PR.list.length)gi=0;if(gi>=0&&PR.cur!=gi){PR.cur=gi;sv('qbu',PR);}})();
 function cur(){return PR.list[PR.cur]||null;}
 function addUser(){return ask(PR.list.length?'הוספת משתמש':'כניסה לאתר הרכבים','הפרטים נשמרים רק בטלפון',[{label:'שם משתמש'},{label:'קוד כניסה',type:'password'}],'שמור והתחבר','ביטול').then(function(v){if(!v||!v[1])return null;PR.list.push({u:v[0].trim(),c:v[1].trim()});PR.cur=PR.list.length-1;sv('qbu',PR);return cur();});}
 function creds(){var c=cur();return c?Promise.resolve(c):addUser();}
@@ -50,7 +51,7 @@ if(!DEST.some(function(x){return x.v==S.dest;}))S.dest='';
 var wl=f.ownerDocument.querySelector('[id="user-welcome"] div');WHO=wl?clean(wl.textContent):'';
 if(WHO&&cur()&&cur().u&&WHO.indexOf(cur().u)<0&&!FIXED){FIXED=true;relogin();return;}
 if(RET=='orders'){RET=null;ordersView();return;}
-draw();
+draw();setTimeout(toTop,50);
 }
 var F=ld('qbf',['ראש העין','אשדוד','גדרה']),P={};
 function p2(n){return (n<10?'0':'')+n;}
@@ -210,7 +211,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='29.10-3';
+var VER='29.10-4';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -259,8 +260,12 @@ c.appendChild(a);m.appendChild(c);box.appendChild(m);
 function say(t){return ask('',t,null,'סגור',null);}
 var STALE=false;
 function back(){if(STALE){STALE=false;relogin();return;}if(form)draw();else box.remove();}
+var LASTVIEW=null;
+function toTop(){try{box.scrollTop=0;window.scrollTo(0,0);var ae=d.activeElement;if(ae&&ae!==d.body&&!box.contains(ae))ae.blur();}catch(e){}}
 function shell(){
+var newView=VIEW!=LASTVIEW;LASTVIEW=VIEW;
 box.innerHTML='';box.appendChild(el('style',null,css));
+if(newView)setTimeout(toTop,0);
 var h=el('div','hdr');var ttl=el('b',null,'הזמנת רכב');ttl.style.cursor='pointer';ttl.style.webkitUserSelect='none';ttl.style.userSelect='none';ttl.style.webkitTouchCallout='none';
 var lpT=null,lpDone=false;
 ttl.addEventListener('touchstart',function(){lpDone=false;lpT=setTimeout(function(){lpDone=true;pickTheme();},550);},{passive:true});
@@ -1048,6 +1053,7 @@ if(html)a.appendChild(btn('דף האתר המקורי',null,function(){d.open();
 w.appendChild(a);
 }
 d.body.appendChild(box);
+toTop();setTimeout(toTop,400);setTimeout(toTop,1200);
 loading('מתחבר…');
 var live=orderForm(d);
 if(live){init(live);return;}
