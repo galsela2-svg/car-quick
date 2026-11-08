@@ -108,6 +108,11 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .livet{font-size:12px;font-weight:800;color:var(--a)}'+
 '@keyframes qbp{from{opacity:1;transform:scale(1)}to{opacity:.25;transform:scale(1.35)}}'+
 '.qbx .okh{font-size:17px;font-weight:800;text-align:center;margin:4px 0 12px;color:rgb(22,130,60)}'+
+'.qbx .pstrip{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px 10px;padding:2px 14px 4px;scrollbar-width:none}'+
+'.qbx .pstrip::-webkit-scrollbar{display:none}'+
+'.qbx .pstrip button{flex:0 0 auto;white-space:nowrap}'+
+'.qbx button.psb{background:white!important;border:1px solid rgb(226,230,236)!important;font-weight:700;color:rgb(28,32,38)!important}'+
+'.qbx button.psm{background:none!important;color:var(--a)!important;font-size:13px!important}'+
 '.qbx .livec{display:flex;align-items:center;gap:10px;background:white;border:2px solid rgb(22,163,74);border-radius:14px;padding:8px 12px;margin:0 0 10px;box-shadow:0 2px 8px rgba(22,163,74,.15);cursor:pointer}'+
 '.qbx .livec .livedot{background:rgb(22,163,74);box-shadow:0 0 0 4px rgb(220,252,231);flex:0 0 auto}'+
 '.qbx .lvm{flex:1 1 0;min-width:0}'+
@@ -222,7 +227,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='8.11-1';
+var VER='8.11-2';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -354,10 +359,75 @@ c.appendChild(m);
 c.onclick=function(){ORD_ALL=PR.list.length>1;ordersView();};
 w.appendChild(c);});
 }
+var PS=ld('qbs',[]);
+function savePS(){sv('qbs',PS);}
+function durLbl(d){return d=='sat'?'עד מוצ״ש 23:00':(d==1?'שעה':d+' שעות');}
+function destT(v){return (DEST.filter(function(x){return x.v==v;})[0]||{}).t||'';}
+function psSummary(p){return [p.start=='now'?'מעכשיו':(p.day==1?'מחר':'היום')+' '+p.time,durLbl(p.dur),destT(p.dest)||'בלי יעד',p.mil?'מילואים':''].filter(Boolean).join(' · ');}
+function presetStrip(w){
+var s=el('div','pstrip');
+PS.forEach(function(p){s.appendChild(btn(p.name,'psb',function(){runPreset(p);}));});
+s.appendChild(btn(PS.length?'עריכת קיצורים':'+ קיצור חדש','psm',presetsView));
+w.appendChild(s);
+}
+function runPreset(p){
+var st;
+if(p.start=='now'){st=minStart();}else{st=new Date();st.setDate(st.getDate()+(p.day||0));var tt=(p.time||'08:00').split(':');st.setHours(Number(tt[0]),Number(tt[1]),0,0);if(st<minStart())st=minStart();}
+S.sd=iso(st);S.st=hm(st);
+if(p.dur=='sat'){var se=satEnd();S.ed=iso(se);S.et='23:00';}else setDur(Number(p.dur)||2);
+if(p.dest&&DEST.some(function(x){return x.v==p.dest;}))S.dest=p.dest;
+P={};for(var k in (p.P||{}))P[k]=p.P[k];
+S.mil=!!p.mil;S.car='0';
+draw();send();
+}
+function presetsView(){
+VIEW='presets';
+var w=shell();
+w.appendChild(el('div','h ctr','קיצורים'));
+if(!PS.length){var c0=el('div','c');c0.appendChild(el('div','msg ctr','עוד אין קיצורים. קיצור שומר מראש שעה, משך, יעד וסוג רכב, ומזמין בלחיצה אחת מהמסך הראשי.'));w.appendChild(c0);}
+PS.forEach(function(p,i){var c=el('div','c');c.appendChild(el('div','h',p.name));c.appendChild(el('div','lg',psSummary(p)));c.lastChild.style.textAlign='right';
+var a=el('div','acts');a.style.marginTop='10px';a.style.justifyContent='flex-start';
+a.appendChild(btn('עריכה',null,function(){presetEdit(i);}));
+a.appendChild(btn('מחק','del0',function(){ask('למחוק את הקיצור "'+p.name+'"?','',null,'מחק','ביטול').then(function(ok){if(!ok)return;PS.splice(i,1);savePS();presetsView();});}));
+c.appendChild(a);w.appendChild(c);});
+var a2=el('div','acts');a2.appendChild(btn('+ קיצור חדש','on',function(){presetEdit(-1);}));a2.appendChild(btn('חזרה להזמנה',null,back));w.appendChild(a2);
+}
+function presetEdit(i){
+var E=i>=0?JSON.parse(JSON.stringify(PS[i])):{name:'',start:'now',day:0,time:hm(minStart()),dur:3,dest:S.dest||'',P:{},mil:false};
+(function rd(){
+VIEW='presets';
+var w=shell();
+w.appendChild(el('div','h ctr',i>=0?'עריכת קיצור':'קיצור חדש'));
+var c=el('div','c');
+var ni=el('input');ni.type='text';ni.value=E.name;ni.placeholder='למשל: אשדוד 3 שעות';ni.oninput=function(){E.name=ni.value;};
+var r=el('div','r');r.appendChild(fld('שם הקיצור',ni));c.appendChild(r);
+c.appendChild(el('div','sub','מתי'));
+c.appendChild(seg([['מעכשיו','now'],['שעה קבועה','fixed']],function(v){return E.start==v;},function(v){E.start=v;rd();}));
+if(E.start=='fixed'){c.appendChild(seg([['היום',0],['מחר',1]],function(v){return (E.day||0)==v;},function(v){E.day=v;rd();}));
+var rr=el('div','r');rr.appendChild(fld('שעה',sel(TO,E.time,function(v){E.time=v;})));c.appendChild(rr);}
+c.appendChild(el('div','sub','משך'));
+var hs=el('div','hs');[1,2,3,4,5,6,7,8,9,10,11,12,24,48,72].forEach(function(h){hs.appendChild(btn(String(h),E.dur==h?'on':'',function(){E.dur=h;rd();}));});
+hs.appendChild(btn('עד מוצ״ש 23:00',E.dur=='sat'?'on':'',function(){E.dur='sat';rd();}));c.appendChild(hs);
+w.appendChild(c);
+c=el('div','c');c.appendChild(el('div','h','לאן'));
+var fv=el('div','ch');F.forEach(function(t){var o=DEST.filter(function(x){return x.t==t;})[0];if(o)fv.appendChild(btn(t,E.dest==o.v?'on':'',function(){E.dest=o.v;rd();}));});if(fv.children.length)c.appendChild(fv);
+var dr=el('div','r');dr.style.marginBottom='0';dr.appendChild(fld('',sel([{v:'',t:'בחר יעד…'}].concat(DEST),E.dest,function(v){E.dest=v;rd();})));c.appendChild(dr);
+w.appendChild(c);
+if(GRPS.length){c=el('div','c');var ch=el('div','ch');ch.style.margin='0';
+GRPS.forEach(function(g){var v=E.P[g.id]==null?-1:E.P[g.id];ch.appendChild(btn((v==1?'✓ ':v==0?'✕ ':'')+short(g.t),v==1?'g':v==0?'x':'n',function(){E.P[g.id]=v==-1?1:v==1?0:-1;rd();}));});
+c.appendChild(ch);w.appendChild(c);}
+if(milUser()){c=el('div','c');c.appendChild(el('div','sub','חיוב'));var sg=seg([['פרטי',false],['מילואים',true]],function(v){return !!E.mil==v;},function(v){E.mil=v;rd();});sg.style.margin='0';c.appendChild(sg);w.appendChild(c);}
+var a=el('div','acts');
+a.appendChild(btn('שמור קיצור','on',function(){if(!clean(E.name)){E.name=(destT(E.dest)||'קיצור')+' '+durLbl(E.dur);}E.name=clean(E.name);if(!E.dest){say('בחר יעד לקיצור');return;}if(i>=0)PS[i]=E;else PS.push(E);savePS();presetsView();}));
+a.appendChild(btn('ביטול',null,presetsView));
+w.appendChild(a);
+})();
+}
 function draw(){
 VIEW='order';
 var w=shell();
 liveBanner(w);
+presetStrip(w);
 var c=el('div','c');
 c.appendChild(seg([['היום',0],['מחר',1],['מחרתיים',2]],function(o){return S.sd==dayIso(o);},function(o){keepDur(function(){S.sd=dayIso(o);});}));
 var r=el('div','r');
