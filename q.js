@@ -34,6 +34,7 @@ function asOwner(o,fn){if(o.owner==null||o.owner==PR.cur)return fn();loading('מ
 function withLogin(url){return getDoc(url).then(function(doc){var lf=loginForm(doc);if(!lf)return doc;return doLogin(lf).then(function(){return getDoc(url);}).then(function(doc2){if(loginForm(doc2)){var bad=cur();PR.list.splice(PR.cur,1);PR.cur=0;sv('qbu',PR);throw 'הכניסה נכשלה עבור '+(bad?bad.u:'המשתמש')+' - שם המשתמש או הקוד שגויים. פתח שוב והזן אותם מחדש';}return doc2;});});}
 var WHO='',FIXED=false;
 function relogin(){
+if(LIVEP){loading('מתחבר…');LIVEP.then(relogin);return;}
 form=null;loading('מתחבר'+(cur()?' כ'+cur().u:'')+'…');
 fetch('/logout.php',{credentials:'same-origin'}).catch(function(){}).then(function(){return withLogin('/order.php');})
 .then(function(doc){var f=orderForm(doc);if(!f)throw 'לא נמצא דף ההזמנה באתר';init(f);})
@@ -51,7 +52,7 @@ if(!DEST.some(function(x){return x.v==S.dest;}))S.dest='';
 var wl=f.ownerDocument.querySelector('[id="user-welcome"] div');WHO=wl?clean(wl.textContent):'';
 if(WHO&&cur()&&cur().u&&WHO.indexOf(cur().u)<0&&!FIXED){FIXED=true;relogin();return;}
 if(RET=='orders'){RET=null;ordersView();return;}
-draw();setTimeout(toTop,50);
+draw();setTimeout(toTop,50);setTimeout(fetchLive,300);
 }
 var F=ld('qbf',['ראש העין','אשדוד','גדרה']),P={};
 function p2(n){return (n<10?'0':'')+n;}
@@ -107,6 +108,16 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .livet{font-size:12px;font-weight:800;color:var(--a)}'+
 '@keyframes qbp{from{opacity:1;transform:scale(1)}to{opacity:.25;transform:scale(1.35)}}'+
 '.qbx .okh{font-size:17px;font-weight:800;text-align:center;margin:4px 0 12px;color:rgb(22,130,60)}'+
+'.qbx .livec{display:flex;align-items:center;gap:10px;background:white;border:2px solid rgb(22,163,74);border-radius:14px;padding:8px 12px;margin:0 0 10px;box-shadow:0 2px 8px rgba(22,163,74,.15);cursor:pointer}'+
+'.qbx .livec .livedot{background:rgb(22,163,74);box-shadow:0 0 0 4px rgb(220,252,231);flex:0 0 auto}'+
+'.qbx .lvm{flex:1 1 0;min-width:0}'+
+'.qbx .lv1{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:800;min-width:0}'+
+'.qbx .lvn{color:rgb(22,130,60)}'+
+'.qbx .lvd{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}'+
+'.qbx .lv2{font-size:12px;color:rgb(90,98,110);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}'+
+'.qbx .uo{font-size:11px;font-weight:800;color:white;padding:2px 8px;border-radius:999px;flex:0 0 auto}'+
+'.qbx .uo.bl2{background:rgb(37,99,235)}'+
+'.qbx .uo.pk2{background:rgb(236,72,153)}'+
 '.qbx .tbl{padding:12px 0 4px}'+
 '.qbx .tbl .h{padding:0 14px}'+
 '.qbx .trow{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid rgb(238,240,244);cursor:pointer}'+
@@ -211,7 +222,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='29.10-4';
+var VER='8.11-1';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -321,9 +332,32 @@ m.appendChild(c);box.appendChild(m);
 });}
 function loading(t){var w=shell();var c=el('div','c');c.appendChild(el('div','big','⏳'));c.appendChild(el('div','ttl',t));w.appendChild(c);}
 var VIEW='order';
+var LIVE=[],LIVEP=null,LIVEDONE=false;
+function fetchLive(){
+if(LIVEDONE||!PR.list.length)return;LIVEDONE=true;
+var p=PR.list.length>1?allOrders():getDoc('/my_orders.php').then(function(d2){return parseMyOrders(d2).map(function(o){o.owner=PR.cur;return o;});});
+LIVEP=p.then(function(list){var nw=new Date();LIVE=list.filter(function(o){return o.s&&o.e&&o.s<=nw&&nw<o.e;});
+if(VIEW=='order'&&LIVE.length){var w=box.querySelector('.wrap');if(w&&!w.querySelector('.livec')){var tmp=el('div');liveBanner(tmp);while(tmp.lastChild)w.insertBefore(tmp.lastChild,w.firstChild);}}})
+.catch(function(){}).then(function(){LIVEP=null;});
+}
+function liveBanner(w){
+var nw=new Date();
+LIVE.filter(function(o){return o.s<=nw&&nw<o.e;}).forEach(function(o){
+var nm=(PR.list[o.owner]||cur()||{}).u||'';var pink=/ניבה/.test(nm);
+var c=el('div','livec');
+var dt=el('span','livedot');c.appendChild(dt);
+var m=el('div','lvm');
+var l1=el('div','lv1');l1.appendChild(el('span','lvn','עכשיו'));if(nm)l1.appendChild(el('span','uo '+(pink?'pk2':'bl2'),nm));if(o.dest)l1.appendChild(el('span','lvd',o.dest));m.appendChild(l1);
+var endT=(iso(o.e)!=iso(nw)?fdate(iso(o.e))+' ':'')+hm(o.e);
+m.appendChild(el('div','lv2',[o.carName||'טרם שובץ','עד '+endT].join(' · ')));
+c.appendChild(m);
+c.onclick=function(){ORD_ALL=PR.list.length>1;ordersView();};
+w.appendChild(c);});
+}
 function draw(){
 VIEW='order';
 var w=shell();
+liveBanner(w);
 var c=el('div','c');
 c.appendChild(seg([['היום',0],['מחר',1],['מחרתיים',2]],function(o){return S.sd==dayIso(o);},function(o){keepDur(function(){S.sd=dayIso(o);});}));
 var r=el('div','r');
@@ -429,6 +463,10 @@ var dn=destName(),when=whenTxt();
 ask('לשלוח הזמנה?',dn+'\n'+when+(S.mil?'\nחיוב: מילואים':''),null,'שלח','ביטול').then(function(ok){if(ok)submit(dn,when);});
 }
 function submit(dn,when){
+if(LIVEP){loading('שולח הזמנה…');LIVEP.then(function(){submitNow(dn,when);});return;}
+submitNow(dn,when);
+}
+function submitNow(dn,when){
 try{
 setv('start_date',site(S.sd));setv('end_date',site(S.ed));setv('start_time',S.st);setv('end_time',S.et);setv('dest',S.dest);
 var rc=q('req_car_id');if(rc)rc.value=S.car;
@@ -562,6 +600,7 @@ parent.appendChild(c);return c;
 }
 function ordersView(){
 VIEW='orders';
+if(LIVEP){loading('טוען הזמנות…');LIVEP.then(ordersView);return;}
 var MY=null;
 var all=ORD_ALL&&PR.list.length>1;
 loading(all?'טוען את כל ההזמנות…':'טוען הזמנות…');
@@ -883,6 +922,7 @@ c.appendChild(sd);parent.appendChild(c);
 }
 function scheduleView(){
 VIEW='sch';
+if(LIVEP){loading('טוען סידור…');LIVEP.then(scheduleView);return;}
 if(!SV.date)SV.date=iso(new Date());
 loading('טוען סידור…');
 withLogin('/schedule.php').then(function(){return loadFrame('/schedule.php');}).then(function(){return waitRows(15000);}).then(function(doc){SCH=parseSchedule(doc);if(!SCH.rows.length)throw 'לא הצלחתי לקרוא את רשימת הרכבים בסידור'+diag(doc,'');if(SCH.date==iso(new Date()))TODAY=SCH;schDraw();if(!SCH.merged){SCH.merged=true;mergeAdj();}})
