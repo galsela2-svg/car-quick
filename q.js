@@ -111,6 +111,8 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .pstrip{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -14px 10px;padding:2px 14px 4px;scrollbar-width:none}'+
 '.qbx .pstrip::-webkit-scrollbar{display:none}'+
 '.qbx .pstrip button{flex:0 0 auto;white-space:nowrap}'+
+'.qbx button.psstar{width:40px!important;height:40px!important;padding:0!important;font-size:20px!important;background:white!important;border:1px solid rgb(226,230,236)!important;color:rgb(225,150,0)!important}'+
+'.qbx button.psstar.on{background:rgb(255,247,224)!important;border-color:rgb(245,200,90)!important}'+
 '.qbx button.psb{background:white!important;border:1px solid rgb(226,230,236)!important;font-weight:700;color:rgb(28,32,38)!important}'+
 '.qbx button.psm{background:none!important;color:var(--a)!important;font-size:13px!important}'+
 '.qbx .livec{display:flex;align-items:center;gap:10px;background:white;border:2px solid rgb(22,163,74);border-radius:14px;padding:8px 12px;margin:0 0 10px;box-shadow:0 2px 8px rgba(22,163,74,.15);cursor:pointer}'+
@@ -227,7 +229,7 @@ var css='.qbx{position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;ba
 '.qbx .hs{display:flex;flex-wrap:nowrap;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px 12px;padding:2px 16px 6px;scrollbar-width:none}'+
 '.qbx .hs::-webkit-scrollbar{display:none}'+
 '.qbx .hs button{flex:0 0 auto;min-width:46px!important;white-space:nowrap}';
-var VER='8.11-2';
+var VER='9.11-1';
 var box=d.createElement('div');box.className='qbx';box.dir='rtl';
 ['keydown','keypress','keyup','input','touchstart','mousedown','focusin','selectstart'].forEach(function(ev){box.addEventListener(ev,function(e){e.stopPropagation();},false);});
 var THEMES=[
@@ -366,8 +368,11 @@ function destT(v){return (DEST.filter(function(x){return x.v==v;})[0]||{}).t||''
 function psSummary(p){return [p.start=='now'?'מעכשיו':(p.day==1?'מחר':'היום')+' '+p.time,durLbl(p.dur),destT(p.dest)||'בלי יעד',p.mil?'מילואים':''].filter(Boolean).join(' · ');}
 function presetStrip(w){
 var s=el('div','pstrip');
+s.appendChild(btn(S.psOpen?'★':'☆','psstar'+(S.psOpen?' on':''),function(){S.psOpen=!S.psOpen;draw();}));
+if(S.psOpen){
 PS.forEach(function(p){s.appendChild(btn(p.name,'psb',function(){runPreset(p);}));});
 s.appendChild(btn(PS.length?'עריכת קיצורים':'+ קיצור חדש','psm',presetsView));
+}
 w.appendChild(s);
 }
 function runPreset(p){
